@@ -32,6 +32,7 @@
   "build": {
     "appId": "nl.bulters.newton",
     "productName": "NewTon+",
+    "copyright": "Copyright © 2026 Bulters Metaalrecycling",
     "win": {
       "target": [
         {
@@ -41,8 +42,7 @@
       ],
       "icon": "build/icon.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}",
-      "signAndEditExecutable": false,
-      "publisherName": "Bulters Metaalrecycling"
+      "signAndEditExecutable": false
     },
     "fileAssociations": [],
     "nsis": {
