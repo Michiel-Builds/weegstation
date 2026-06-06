@@ -1,91 +1,174 @@
-import { MATERIALEN } from "../data/stamdata";
-
-export function rndGewicht(min, max) {
-  return parseInt((Math.random() * (max - min) + min).toFixed(0));
-}
-
-export function initWegingen() {
-  const nu = new Date();
-  return Array.from({ length: 12 }, (_, i) => {
-    const mat = MATERIALEN[i % MATERIALEN.length];
-    const d = new Date(nu - (12 - i) * 4 * 60000);
-    return {
-      id: i + 1,
-      materiaal: mat,
-      gewicht: rndGewicht(80, 8000),
-      kenteken: `NL-${["AB","CD","EF","GH","IJ","KL"][i % 6]}-${400 + i * 37}`,
-      tijd:  d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      datum: d.toLocaleDateString("nl-NL"),
-      bron: "demo",
-      isNieuw: false,
-    };
-  }).reverse();
-}
-
-export function parseNewtonXML(xmlText) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xmlText, "application/xml");
-  const err = doc.querySelector("parsererror");
-  if (err) throw new Error("Ongeldig XML-bestand");
-
-  const wegingen = [];
-  const nodes = doc.querySelectorAll("weging, Weging");
-  if (nodes.length === 0) throw new Error("Geen <weging> elementen gevonden in XML");
-
-  nodes.forEach((node, i) => {
-    const get = (tag) => {
-      const el = node.querySelector(tag)
-              || node.querySelector(tag.toLowerCase())
-              || node.querySelector(tag.toUpperCase());
-      return el ? el.textContent.trim() : "";
-    };
-    const materiaalNaam = get("materiaal") || "Onbekend";
-    const mat = MATERIALEN.find(m => m.naam.toLowerCase() === materiaalNaam.toLowerCase())
-      || { id: 99, naam: materiaalNaam, kleur: "#888", tag: "tag-staal" };
-
-    wegingen.push({
-      id: Date.now() + i,
-      materiaal: mat,
-      gewicht: parseFloat(get("gewicht") || "0"),
-      kenteken: get("kenteken") || "–",
-      datum: get("datum") || new Date().toLocaleDateString("nl-NL"),
-      tijd:  get("tijd")  || "00:00:00",
-      bron: "xml",
-      isNieuw: true,
-    });
-  });
-  return wegingen;
-}
-
-let bonTeller = parseInt(localStorage.getItem("bulters_bon_teller") || "0");
+// ===== Bon-nummer =====
 export function maakBonnummer() {
-  const datum = new Date();
-  const prefix = datum.getFullYear().toString() +
-    String(datum.getMonth() + 1).padStart(2, "0") +
-    String(datum.getDate()).padStart(2, "0");
-  bonTeller++;
-  localStorage.setItem("bulters_bon_teller", bonTeller);
-  return `${prefix}-${String(bonTeller).padStart(3, "0")}`;
+  const d = new Date();
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`;
 }
 
-export function printBon(bon) {
-  const nu = new Date();
-  const datum = nu.toLocaleDateString("nl-NL");
-  const tijd  = nu.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
-  const regelsHTML = (bon.regels || [bon]).map((r, i) => `
+// ===== XML Parser voor NewTon+ import =====
+export function parseNewtonXML(xmlText) {
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, "text/xml");
+    const wegingen = [];
+
+    // Probeer verschillende XML-structuren
+    const nodes = doc.getElementsByTagName("weging");
+    if (nodes.length > 0) {
+      for (let i = 0; i < nodes.length; i++) {
+        const w = nodes[i];
+        wegingen.push(xmlNodeNaarWeging(w));
+      }
+    } else {
+      // Probeer alternatieve structuur (record-based)
+      const records = doc.getElementsByTagName("record");
+      for (let i = 0; i < records.length; i++) {
+        wegingen.push(xmlNodeNaarWeging(records[i]));
+      }
+    }
+
+    return wegingen;
+  } catch (e) {
+    return [];
+  }
+}
+
+function xmlNodeNaarWeging(node) {
+  const get = (tag) => {
+    const el = node.getElementsByTagName(tag)[0];
+    return el ? el.textContent.trim() : "";
+  };
+  const getNum = (tag) => parseFloat(get(tag)) || 0;
+
+  // Probeer materiaal op te zoeken
+  const materiaalNaam = get("materiaal") || get("soort") || "Onbekend";
+  const materiaalId = get("materiaalId") || materiaalNaam.toLowerCase().slice(0, 3);
+  const kleur = get("kleur") || "#4caf7d";
+
+  return {
+    id: Date.now() + Math.random(),
+    kenteken: get("kenteken") || "–",
+    materiaal: { id: materiaalId, naam: materiaalNaam, kleur: kleur, tag: "tag-" + materiaalId },
+    gewicht: getNum("gewicht") || getNum("kg") || 0,
+    prijs: getNum("prijs") || 0,
+    totaal: getNum("totaal") || 0,
+    tijd: get("tijd") || new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }),
+    datum: get("datum") || new Date().toLocaleDateString("nl-NL"),
+    bron: "xml-import"
+  };
+}
+
+// ===== Demo wegingen =====
+export function initWegingen() {
+  const vandaag = new Date();
+  const fmt = (offset) => {
+    const d = new Date(vandaag.getTime() - offset * 3600000);
+    return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+  };
+  const dagen = (offset) => {
+    const d = new Date(vandaag.getTime() - offset * 86400000);
+    return d.toLocaleDateString("nl-NL");
+  };
+
+  return [
+    { id: 1, kenteken: "NL-KL-807",  materiaal: { id: 2, naam: "Aluminium", kleur: "#9ec1e8", tag: "tag-alu" }, gewicht: 5863, prijs: 1.85, totaal: 10846.55, tijd: fmt(0.05), datum: dagen(0), bron: "live" },
+    { id: 2, kenteken: "NL-IJ-770",  materiaal: { id: 1, naam: "Koper",      kleur: "#4caf7d", tag: "tag-kop" }, gewicht: 3688, prijs: 6.40, totaal: 23603.20, tijd: fmt(0.4),  datum: dagen(0), bron: "live" },
+    { id: 3, kenteken: "NL-GH-733",  materiaal: { id: 5, naam: "RVS",        kleur: "#8a8a8a", tag: "tag-rvs" }, gewicht: 5986, prijs: 1.10, totaal: 6584.60,  tijd: fmt(0.75), datum: dagen(0), bron: "live" },
+    { id: 4, kenteken: "NL-EF-696",  materiaal: { id: 4, naam: "Messing",    kleur: "#d4b84a", tag: "tag-mes" }, gewicht: 2074, prijs: 4.20, totaal: 8710.80,  tijd: fmt(1.1),  datum: dagen(0), bron: "live" },
+    { id: 5, kenteken: "NL-CD-659",  materiaal: { id: 3, naam: "Staal",      kleur: "#a89a8c", tag: "tag-sta" }, gewicht: 3691, prijs: 0.35, totaal: 1291.85,  tijd: fmt(1.45), datum: dagen(0), bron: "live" },
+    { id: 6, kenteken: "NL-AB-622",  materiaal: { id: 2, naam: "Aluminium", kleur: "#9ec1e8", tag: "tag-alu" }, gewicht: 4006, prijs: 1.85, totaal: 7411.10,  tijd: fmt(1.8),  datum: dagen(0), bron: "live" },
+    { id: 7, kenteken: "NL-KL-585",  materiaal: { id: 1, naam: "Koper",      kleur: "#4caf7d", tag: "tag-kop" }, gewicht: 7571, prijs: 6.40, totaal: 48454.40, tijd: fmt(2.15), datum: dagen(0), bron: "live" },
+    { id: 8, kenteken: "NL-IJ-548",  materiaal: { id: 5, naam: "RVS",        kleur: "#8a8a8a", tag: "tag-rvs" }, gewicht: 4928, prijs: 1.10, totaal: 5420.80,  tijd: fmt(2.5),  datum: dagen(0), bron: "live" },
+    { id: 9, kenteken: "NL-DD-512",  materiaal: { id: 1, naam: "Koper",      kleur: "#4caf7d", tag: "tag-kop" }, gewicht: 2240, prijs: 6.40, totaal: 14336.00, tijd: fmt(24),   datum: dagen(1), bron: "live" },
+    { id: 10, kenteken: "NL-XX-001", materiaal: { id: 3, naam: "Staal",      kleur: "#a89a8c", tag: "tag-sta" }, gewicht: 8500, prijs: 0.35, totaal: 2975.00,  tijd: fmt(28),   datum: dagen(1), bron: "live" },
+    { id: 11, kenteken: "NL-EE-444", materiaal: { id: 4, naam: "Messing",    kleur: "#d4b84a", tag: "tag-mes" }, gewicht: 1200, prijs: 4.20, totaal: 5040.00,  tijd: fmt(50),   datum: dagen(2), bron: "live" },
+    { id: 12, kenteken: "NL-ZZ-999", materiaal: { id: 2, naam: "Aluminium", kleur: "#9ec1e8", tag: "tag-alu" }, gewicht: 3300, prijs: 1.85, totaal: 6105.00,  tijd: fmt(72),   datum: dagen(2), bron: "live" }
+  ];
+}
+
+// ===== Print Bon =====
+export function printBon({ bonnummer, klant, klantType, regels, totaalKg, totaalEuro }) {
+  const datum = new Date().toLocaleDateString("nl-NL");
+  const tijd  = new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+
+  const klantRegelHTML = klantType === "bedrijf"
+    ? `<tr><td><strong>${klant.bedrijf || "—"}</strong></td><td>${klant.contactpersoon || ""}</td></tr>
+       <tr><td>Adres:</td><td>${klant.adres || ""}, ${klant.postcode || ""} ${klant.plaats || ""}</td></tr>
+       <tr><td>BTW:</td><td>${klant.btw || ""}</td></tr>
+       <tr><td>KvK:</td><td>${klant.kvk || ""}</td></tr>
+       <tr><td>E-mail:</td><td>${klant.email || ""}</td></tr>`
+        : `<tr><td><strong>${klant.naam || "—"}</strong></td></tr>
+       <tr><td>Adres:</td><td>${klant.adres || ""}, ${klant.plaats || ""}</td></tr>
+       <tr><td>Tel:</td><td>${klant.telefoon || ""}</td></tr>
+       <tr><td>E-mail:</td><td>${klant.email || ""}</td></tr>
+       ${klant.legitimatieType && klant.legitimatieNummer
+         ? `<tr><td>${klant.legitimatieType}:</td><td><strong>${klant.legitimatieNummer}</strong></td></tr>`
+         : ""}`;
+
+  const regelsHTML = regels.map(r => `
+    <tr>
+      <td>${r.datum} ${r.tijd}</td>
+      <td>${r.kenteken || "—"}</td>
+      <td>${r.materiaal.naam}</td>
+      <td style="text-align:right">${r.gewicht.toLocaleString("nl-NL")} kg</td>
+      <td style="text-align:right">€ ${r.prijs.toFixed(2)}/kg</td>
+      <td style="text-align:right;font-weight:700">€ ${r.totaal.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+    </tr>
+  `).join("");
+
+  const bonHTML = `<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<title>Bon ${bonnummer}</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; padding: 30px; max-width: 800px; margin: 0 auto; color: #000; }
+  h1 { color: #2e7d32; margin-bottom: 4px; font-size: 24px; }
+  h2 { color: #333; margin-top: 0; font-size: 16px; font-weight: normal; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+  th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; font-size: 13px; }
+  th { background: #f5f5f5; font-weight: 600; }
+  .klant-info { background: #f9f9f9; padding: 12px; border-radius: 6px; margin-top: 12px; }
+  .klant-info td { border: none; padding: 3px 8px; }
+  .totaal { margin-top: 16px; text-align: right; font-size: 18px; font-weight: 700; color: #2e7d32; }
+  .footer { margin-top: 30px; font-size: 11px; color: #666; text-align: center; border-top: 1px solid #ddd; padding-top: 12px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <h1>Metaalrecycling Bulters</h1>
+  <h2>Bon ${bonnummer} — ${datum} ${tijd}</h2>
+  <div class="klant-info">
+    <table>
+      <tr><td><strong>${klantType === "bedrijf" ? "Bedrijf" : "Particulier"}:</strong></td><td></td></tr>
+      ${klantRegelHTML}
+    </table>
+  </div>
+  <table>
+    <thead>
       <tr>
-        <td>${i + 1}</td>
-        <td>${r.kenteken || "–"}</td>
-        <td>${r.materiaal.naam}</td>
-        <td style="text-align:right">${r.gewicht.toLocaleString("nl-NL")} kg</td>
-        <td style="text-align:right">€ ${(r.prijs || 0).toFixed(2)}</td>
-        <td style="text-align:right;font-weight:700">€ ${(r.totaal || 0).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-      </tr>`).join("");
-  const totaalKg   = (bon.regels || [bon]).reduce((s, r) => s + r.gewicht, 0);
-  const totaalEuro = bon.totaalEuro !== undefined
-    ? bon.totaalEuro
-    : (bon.regels || [bon]).reduce((s, r) => s + (r.totaal || 0), 0);
-  const bonHTML = `<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>Bon ${bon.bonnummer}</title></head><body><h1>Metaalrecycling Bulters</h1><h2>${bon.bonnummer}</h2><p>${datum} ${tijd}</p><table border="1" cellpadding="6" style="border-collapse:collapse;width:100%">${regelsHTML}</table><h3>Totaal: ${totaalKg} kg — € ${totaalEuro.toFixed(2)}</h3><script>window.onload=function(){window.print();}</script></body></html>`;
-  const popup = window.open("", "_blank", "width=750,height=1000");
-  if (popup) { popup.document.write(bonHTML); popup.document.close(); }
+        <th>Datum/Tijd</th>
+        <th>Kenteken</th>
+        <th>Materiaal</th>
+        <th style="text-align:right">Gewicht</th>
+        <th style="text-align:right">Prijs/kg</th>
+        <th style="text-align:right">Bedrag</th>
+      </tr>
+    </thead>
+    <tbody>${regelsHTML}</tbody>
+  </table>
+  <div class="totaal">
+    Totaal: ${totaalKg.toLocaleString("nl-NL")} kg — € ${totaalEuro.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+  </div>
+  <div class="footer">
+    Metaalrecycling Bulters · Bulters B.V. · Dit document is automatisch gegenereerd
+  </div>
+  <script>window.onload = function() { setTimeout(() => window.print(), 200); };</script>
+</body>
+</html>`;
+
+  const w = window.open("", "_blank", "width=800,height=900");
+  if (w) {
+    w.document.write(bonHTML);
+    w.document.close();
+  }
 }

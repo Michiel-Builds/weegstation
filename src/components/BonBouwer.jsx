@@ -3,16 +3,25 @@ import { MATERIALEN } from "../data/stamdata";
 import { maakBonnummer, printBon } from "../utils/helpers";
 
 export default function BonBouwer({ prijzen }) {
-  const [klantType, setKlantType]     = useState("bedrijf");
-  const [klant, setKlant]             = useState({ naam: "", bedrijf: "", adres: "", postcode: "", plaats: "", btw: "" });
+const [klant, setKlant]             = useState({
+  naam: "", bedrijf: "", contactpersoon: "",
+  adres: "", postcode: "", plaats: "",
+  btw: "", kvk: "", email: "", telefoon: "",
+  legitimatieType: "", legitimatieNummer: ""  // NIEUW
+});
   const [bonRegels, setBonRegels]     = useState([]);
   const [bonnummer]                   = useState(maakBonnummer());
   const [invMat, setInvMat]           = useState(null);
   const [invKenteken, setInvKenteken] = useState("");
   const [invGewicht, setInvGewicht]   = useState("");
+  const [klantType, setKlantType]     = useState("bedrijf");
 
   const totaalKg   = bonRegels.reduce((s, r) => s + r.gewicht, 0);
   const totaalEuro = bonRegels.reduce((s, r) => s + r.totaal, 0);
+
+  function updateKlant(veld, waarde) {
+    setKlant(prev => ({ ...prev, [veld]: waarde }));
+  }
 
   function voegRegelToe() {
     if (!invMat || !invGewicht || parseFloat(invGewicht) <= 0) return;
@@ -30,8 +39,11 @@ export default function BonBouwer({ prijzen }) {
   }
 
   function verwijderRegel(id) { setBonRegels(prev => prev.filter(r => r.id !== id)); }
-  function nieuweBon()        { setBonRegels([]); setKlant({ naam: "", bedrijf: "", adres: "", postcode: "", plaats: "", btw: "" }); }
+  function nieuweBon()        { setBonRegels([]); setKlant({ naam: "", bedrijf: "", contactpersoon: "", adres: "", postcode: "", plaats: "", btw: "", kvk: "", email: "", telefoon: "" }); }
   function afdrukken()        { printBon({ bonnummer, klant, klantType, regels: bonRegels, totaalKg, totaalEuro }); }
+
+  // Velden op basis van klantType
+  const isBedrijf = klantType === "bedrijf";
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20 }}>
@@ -41,6 +53,157 @@ export default function BonBouwer({ prijzen }) {
           <span className="badge">{bonnummer}</span>
         </div>
         <div style={{ padding: 16 }}>
+
+          {/* Klantgegevens */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+              <button
+                onClick={() => setKlantType("bedrijf")}
+                style={{
+                  flex: 1, padding: "8px", borderRadius: 7,
+                  border: "1px solid " + (isBedrijf ? "var(--accent2)" : "var(--border)"),
+                  background: isBedrijf ? "rgba(46,125,50,0.1)" : "var(--surface2)",
+                  color: isBedrijf ? "var(--accent2)" : "var(--muted)",
+                  cursor: "pointer", fontFamily: "var(--mono)", fontSize: 12
+                }}
+              >🏢 Bedrijf</button>
+              <button
+                onClick={() => setKlantType("particulier")}
+                style={{
+                  flex: 1, padding: "8px", borderRadius: 7,
+                  border: "1px solid " + (!isBedrijf ? "var(--accent2)" : "var(--border)"),
+                  background: !isBedrijf ? "rgba(46,125,50,0.1)" : "var(--surface2)",
+                  color: !isBedrijf ? "var(--accent2)" : "var(--muted)",
+                  cursor: "pointer", fontFamily: "var(--mono)", fontSize: 12
+                }}
+              >👤 Particulier</button>
+            </div>
+
+            {/* Klant-specifieke velden */}
+            {isBedrijf ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Bedrijfsnaam *"
+                  value={klant.bedrijf}
+                  onChange={e => updateKlant("bedrijf", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Contactpersoon"
+                  value={klant.contactpersoon}
+                  onChange={e => updateKlant("contactpersoon", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Adres"
+                  value={klant.adres}
+                  onChange={e => updateKlant("adres", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Postcode"
+                  value={klant.postcode}
+                  onChange={e => updateKlant("postcode", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Plaats"
+                  value={klant.plaats}
+                  onChange={e => updateKlant("plaats", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="BTW-nummer"
+                  value={klant.btw}
+                  onChange={e => updateKlant("btw", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="KvK-nummer"
+                  value={klant.kvk}
+                  onChange={e => updateKlant("kvk", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="E-mail"
+                  type="email"
+                  value={klant.email}
+                  onChange={e => updateKlant("email", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Naam *"
+                  value={klant.naam}
+                  onChange={e => updateKlant("naam", e.target.value)}
+                  style={{ marginBottom: 0, gridColumn: "span 2" }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Adres"
+                  value={klant.adres}
+                  onChange={e => updateKlant("adres", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Postcode + Plaats"
+                  value={klant.plaats}
+                  onChange={e => updateKlant("plaats", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                                <div style={{ gridColumn: "span 2", display: "flex", gap: 8, alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap" }}>Legitimatie:</span>
+                  <select
+                    value={klant.legitimatieType}
+                    onChange={e => updateKlant("legitimatieType", e.target.value)}
+                    className="weeg-veld-input"
+                    style={{ flex: 1, marginBottom: 0 }}
+                  >
+                    <option value="">— kies type —</option>
+                    <option value="Rijbewijs">Rijbewijs</option>
+                    <option value="Paspoort">Paspoort</option>
+                    <option value="ID-kaart">ID-kaart</option>
+                  </select>
+                </div>
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Legitimatienummer"
+                  value={klant.legitimatieNummer}
+                  onChange={e => updateKlant("legitimatieNummer", e.target.value)}
+                  style={{ marginBottom: 0, gridColumn: "span 2" }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="Telefoon"
+                  value={klant.telefoon}
+                  onChange={e => updateKlant("telefoon", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+                <input
+                  className="weeg-veld-input"
+                  placeholder="E-mail"
+                  type="email"
+                  value={klant.email}
+                  onChange={e => updateKlant("email", e.target.value)}
+                  style={{ marginBottom: 0 }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Materiaal + regels */}
           <div style={{ marginBottom: 16, padding: 14, background: "var(--surface2)", borderRadius: 9, border: "1px solid var(--border)" }}>
             <div className="weeg-mat-grid" style={{ marginBottom: 10 }}>
               {MATERIALEN.map(m => (
@@ -76,15 +239,7 @@ export default function BonBouwer({ prijzen }) {
               style={{ padding: "8px 16px", background: (!invMat || !invGewicht) ? "var(--surface2)" : "var(--accent)", color: (!invMat || !invGewicht) ? "var(--muted)" : "#fff", border: "none", borderRadius: 6, fontWeight: 700, fontSize: 13, cursor: "pointer", fontFamily: "var(--sans)" }}
             >+ Toevoegen aan bon</button>
           </div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            {["bedrijf", "particulier"].map(t => (
-              <button
-                key={t}
-                onClick={() => setKlantType(t)}
-                style={{ flex: 1, padding: "8px", borderRadius: 7, border: "1px solid " + (klantType === t ? "var(--accent2)" : "var(--border)"), background: klantType === t ? "rgba(46,125,50,0.1)" : "var(--surface2)", color: klantType === t ? "var(--accent2)" : "var(--muted)", cursor: "pointer", fontFamily: "var(--mono)", fontSize: 12 }}
-              >{t === "bedrijf" ? "🏢 Bedrijf" : "👤 Particulier"}</button>
-            ))}
-          </div>
+
           {bonRegels.length === 0 ? (
             <div style={{ padding: 20, textAlign: "center", color: "var(--muted)", fontSize: 12, fontFamily: "var(--mono)", background: "var(--surface2)", borderRadius: 8, border: "1px dashed var(--border)" }}>
               Voeg regels toe om een bon te maken
