@@ -24,8 +24,9 @@ export default function App() {
   const [gewichtWeegbrug, setGewichtWeegbrug] = useState(null);
   const [gewichtLoods, setGewichtLoods]       = useState(null);
   const [serverVerbonden, setServerVerbonden] = useState(false);
-  const [serverIP, setServerIP]               = useState("192.168.1.100");
+  const [serverIP, setServerIP]               = useState("localhost");
   const [simulatieModus, setSimulatieModus]   = useState(false);
+  const wsRef = useRef(null);
   // Versie-indicator in venstertitel (handig voor updates-test)
   useEffect(() => {
     document.title = "NewTon+ v1.0.4 | Metaalrecycling Bulters";
