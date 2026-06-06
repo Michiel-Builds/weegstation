@@ -1,4 +1,4 @@
-﻿name: Build & Release NewTon+
+name: Build & Release NewTon+
 
 on:
   push:
