@@ -1,0 +1,21 @@
+﻿# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Signing & secrets — NOOIT in Git!
+signing/*.pfx
+signing/*.p12
+*.pfx
+*.p12
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+.env

@@ -1,0 +1,39 @@
+════════════════════════════════════════════════════════
+   METAALRECYCLING BULTERS — NewTon+ INSTALLATIE (VITE)
+════════════════════════════════════════════════════════
+
+EENMALIGE INSTALLATIE
+──────────────────────
+1. Open Opdrachtprompt (Start → zoek "cmd")
+2. Navigeer naar deze map:
+     cd "C:\Users\tuinkabouter\Desktop\bulters-vite"
+     (pas pad aan naar waar je de map hebt uitgepakt)
+
+3. Installeer benodigdheden (eenmalig, duurt 1-2 min):
+     npm install
+
+4. Bouw de app (eenmalig):
+     npm run build
+
+5. Start de app:
+     npx serve dist
+
+6. Open in Edge/Chrome:
+     http://localhost:3000
+
+
+DAGELIJKS STARTEN
+──────────────────
+Na de eerste installatie hoef je alleen nog:
+     npx serve dist
+En dan http://localhost:3000 openen.
+
+
+INLOGGEN
+─────────
+  admin      / bulters2024   → Volledige toegang
+  kantoor    / kantoor123    → Wegen + bon + prijzen
+  chauffeur  / weegbrug      → Alleen weegscherm
+
+
+════════════════════════════════════════════════════════

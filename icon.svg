@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f1011"/>
+      <stop offset="100%" stop-color="#181a1b"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#66bb6a"/>
+      <stop offset="100%" stop-color="#2e7d32"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Achtergrond: groene cirkel met subtiele gradient -->
+  <circle cx="128" cy="128" r="120" fill="url(#bg)" stroke="url(#green)" stroke-width="6"/>
+
+  <!-- Stapel metaal (3 gestapelde, gedraaide brokken) -->
+  <g transform="translate(128 110)">
+    <!-- Onderste laag -->
+    <polygon points="-50,20 50,15 55,30 -45,35" fill="#5a5045" stroke="#3a3530" stroke-width="1.5"/>
+    <polygon points="-50,20 -45,35 -52,40 -55,28" fill="#3a3530"/>
+
+    <!-- Middelste laag -->
+    <polygon points="-45,5 45,0 50,15 -50,20" fill="#6e6358" stroke="#3a3530" stroke-width="1.5"/>
+    <polygon points="-45,5 -50,20 -56,18 -52,5" fill="#3a3530"/>
+
+    <!-- Bovenste laag (kleine stukjes) -->
+    <polygon points="-30,-12 30,-15 35,-3 -28,0" fill="#7a6f63" stroke="#3a3530" stroke-width="1.5"/>
+    <polygon points="-30,-12 -28,0 -35,2 -38,-10" fill="#4a4540"/>
+
+    <!-- Metaal-glans (kleine witte streepjes) -->
+    <line x1="-20" y1="-9" x2="-12" y2="-9" stroke="#a8a098" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="5" y1="-12" x2="14" y2="-12.5" stroke="#a8a098" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="20" y1="2" x2="32" y2="1" stroke="#9a928a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="-30" y1="8" x2="-18" y2="8.5" stroke="#9a928a" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+
+  <!-- "N+" tekst onderaan -->
+  <text x="128" y="200" font-family="'Segoe UI', 'Arial Black', sans-serif" font-size="58" font-weight="900" fill="url(#green)" text-anchor="middle" letter-spacing="-2">N+</text>
+</svg>
