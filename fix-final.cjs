@@ -1,4 +1,10 @@
-import { useState } from "react";
+const fs = require("fs");
+const utf8 = new (require("System.Text.UTF8Encoding"))(false);
+const path = require("path");
+
+// === 1. Maak Calculator.jsx ===
+const calcPath = "C:/Users/tuinkabouter/Desktop/bulterS-vite/src/components/Calculator.jsx";
+const calcContent = `import { useState } from "react";
 import { MATERIALEN, INIT_PRIJZEN } from "../data/stamdata";
 
 export default function Calculator() {
@@ -118,23 +124,4 @@ export default function Calculator() {
           )}
           <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
             <span style={{ color: "var(--muted)" }}>+ BTW ({btwPct}%)</span>
-            <span className="mono">euro {btwBedrag.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          </div>
-          <div style={{ marginTop: 14, padding: 16, background: "var(--surface2)", borderRadius: 10, border: "2px solid var(--accent)" }}>
-            <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Eindprijs (incl. BTW)</div>
-            <div className="mono" style={{ fontSize: 28, fontWeight: 900, color: "var(--accent2)" }}>
-              euro {eindprijs.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6, fontFamily: "var(--mono)" }}>
-              waarvan euro {btwBedrag.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} BTW
-            </div>
-          </div>
-          <button
-            onClick={() => { setGewicht(0); setMargePct(0); setKosten(0); setBtwPct(21); }}
-            style={{ width: "100%", marginTop: 16, padding: "10px", background: "var(--surface2)", color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 7, fontSize: 13, cursor: "pointer", fontFamily: "var(--sans)" }}
-          >Reset</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+            <span className="mono">euro {btwBedrag.toLocaleString("nl-NL", { minimumFractionDigits:*

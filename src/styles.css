@@ -276,3 +276,70 @@ td { padding: 12px 16px; font-size: 13px; }
   font-style: normal !important;
   font-weight: normal !important;
 }
+
+/* ========================================
+   OUDE FIX (werkt mogelijk niet in Edge)
+   ======================================== */
+table input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: none;
+  -webkit-appearance: none;
+}
+table input[type="number"]::-webkit-outer-spin-button,
+table input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* ========================================
+   NIEUWE KRACHTIGE FIX: spinner-pijltjes WEG
+   Werkt in Chrome, Edge, Firefox, Safari
+   ======================================== */
+
+/* WebKit (Chrome, Edge, Safari) - de pseudo-elementen volledig uitschakelen */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button,
+.weeg-paneel input[type="number"]::-webkit-outer-spin-button,
+.weeg-paneel input[type="number"]::-webkit-inner-spin-button,
+table input[type="number"]::-webkit-outer-spin-button,
+table input[type="number"]::-webkit-inner-spin-button,
+.weeg-veld-input::-webkit-outer-spin-button,
+.weeg-veld-input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Firefox + algemene appearance reset */
+input[type="number"],
+.weeg-paneel input[type="number"],
+table input[type="number"],
+.weeg-veld-input {
+  -moz-appearance: textfield !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+/* Microsoft Edge specifieke pseudo-elementen */
+input[type="number"]::-ms-clear,
+input[type="number"]::-ms-reveal,
+input[type="number"]::-ms-thumb {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Extra fix: verhoog specificiteit voor Edge dat !important soms negeert */
+body input[type="number"],
+body .weeg-paneel input[type="number"],
+body table input[type="number"] {
+  -webkit-appearance: none !important;
+  -moz-appearance: textfield !important;
+  appearance: none !important;
+}

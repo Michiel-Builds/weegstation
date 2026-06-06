@@ -29,7 +29,7 @@ export default function App() {
   const wsRef = useRef(null);
   // Versie-indicator in venstertitel (handig voor updates-test)
   useEffect(() => {
-    document.title = "NewTon+ v1.0.4 | Metaalrecycling Bulters";
+    document.title = "NewTon+ v1.0.8 | Metaalrecycling Bulters";
   }, []);
 
   useEffect(() => {
@@ -350,7 +350,7 @@ export default function App() {
                 </div>
               </div>
             )}
-            {pagina === "bon" && <BonBouwer prijzen={prijzen} />}
+            {pagina === "bon" && <BonBouwer prijzen={prijzen} wegingen={wegingen} />}
             {pagina === "wegen" && (
               <WeegPagina
                 gewichtWeegbrug={gewichtWeegbrug}

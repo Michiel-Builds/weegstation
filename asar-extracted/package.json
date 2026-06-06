@@ -1,0 +1,20 @@
+{
+  "name": "bulters-newton-app",
+  "version": "1.0.8",
+  "type": "module",
+  "description": "NewTon+ Metaalrecycling Bulters - voorraad- en weegsysteem voor metaalhandel",
+  "author": "Michiel Bulters",
+  "main": "electron.cjs",
+  "dependencies": {
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.8.3",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "ws": "^8.18.0",
+    "serialport": "^12.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/michielvgvg/newton-plus.git"
+  }
+}
