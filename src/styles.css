@@ -343,3 +343,189 @@ body table input[type="number"] {
   -moz-appearance: textfield !important;
   appearance: none !important;
 }
+/* =============================================
+   MULTI-KLANT WEGEN PAGINA
+   ============================================= */
+
+.weeg-pagina-mk { display: block; }
+
+.weegbrug-display-mk {
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.weegbrug-bron-mk {
+  font-size: 11px; color: var(--muted);
+  font-family: var(--mono);
+  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px;
+}
+.weegbrug-getal-mk {
+  font-family: var(--mono); font-size: 48px; font-weight: 700;
+  color: var(--accent2); line-height: 1;
+}
+.weegbrug-eenheid-mk { font-size: 20px; color: var(--muted); }
+.weegbrug-status-mk {
+  font-size: 12px; color: var(--muted);
+  font-family: var(--mono); margin-top: 8px;
+}
+.weegbrug-controls-mk { display: flex; gap: 8px; justify-content: center; margin-top: 16px; }
+.bron-btn-mk {
+  padding: 8px 16px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted); cursor: pointer;
+  font-family: var(--mono); font-size: 12px;
+}
+.bron-btn-mk.actief {
+  border-color: var(--accent2); color: var(--accent2);
+  background: rgba(46,125,50,0.1);
+}
+
+.klanten-lijst-mk { margin-bottom: 20px; }
+.klanten-leeg-mk {
+  padding: 30px; text-align: center; color: var(--muted);
+  font-size: 13px; background: var(--surface);
+  border: 1px dashed var(--border); border-radius: 8px;
+}
+
+.klant-kaart-mk {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.klant-header-mk {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 12px;
+}
+.klant-nr-mk {
+  font-size: 12px; color: var(--muted);
+  font-family: var(--mono);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.klant-status-mk {
+  font-size: 11px; padding: 3px 8px; border-radius: 999px;
+  font-family: var(--mono);
+}
+.klant-status-wacht {
+  background: rgba(138,143,150,0.15); color: var(--muted);
+}
+.klant-status-bezig {
+  background: rgba(212,184,74,0.15); color: #d4b84a;
+}
+.klant-status-klaar {
+  background: rgba(154,210,154,0.15); color: var(--accent2);
+}
+
+.klant-top-mk { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.klant-input-mk, .klant-select-mk {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 9px 11px;
+  border-radius: 6px;
+  outline: none;
+  width: 100%;
+}
+.klant-input-mk:focus, .klant-select-mk:focus { border-color: var(--accent2); }
+.klant-input-mk::placeholder { color: var(--muted); }
+
+.klant-mid-mk { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.gewicht-vak-mk {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px;
+}
+.gewicht-vak-mk.klaar {
+  border-color: var(--accent2);
+  background: rgba(46,125,50,0.05);
+}
+.gewicht-vak-label-mk {
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin-bottom: 6px; font-family: var(--mono);
+}
+.gewicht-vak-waarde-mk {
+  font-family: var(--mono); font-size: 18px; font-weight: 700;
+  color: var(--accent2); margin-bottom: 8px; min-height: 26px;
+}
+.gewicht-vak-waarde-mk.leeg {
+  color: var(--muted); font-weight: 400; font-size: 13px;
+}
+.weeg-knop-mk {
+  width: 100%; padding: 8px; border-radius: 5px;
+  border: 1px solid var(--border);
+  background: #212426; color: var(--text);
+  cursor: pointer; font-family: var(--mono);
+  font-size: 12px; font-weight: 600;
+}
+.weeg-knop-mk:hover { background: #2d3137; }
+.weeg-knop-mk.klaar {
+  background: rgba(154,210,154,0.15);
+  border-color: var(--accent2); color: var(--accent2);
+}
+
+.klant-netto-mk {
+  margin-top: 12px; padding: 10px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--accent2);
+  border-radius: 7px;
+  display: flex; justify-content: space-between;
+  align-items: center; font-family: var(--mono);
+}
+.lbl-mk {
+  font-size: 11px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.kg-mk { font-size: 18px; font-weight: 700; }
+
+.verwijder-btn-mk {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--red); border-radius: 5px;
+  cursor: pointer; font-size: 13px; padding: 4px 8px;
+}
+.verwijder-btn-mk:hover { border-color: var(--red); }
+.print-btn-mk {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--accent2); border-radius: 5px;
+  cursor: pointer; font-size: 12px; padding: 4px 10px;
+  font-family: var(--mono); font-weight: 600;
+}
+.print-btn-mk:hover { border-color: var(--accent2); background: rgba(154,210,154,0.1); }
+.print-btn-mk:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.hoofd-acties-mk { display: flex; gap: 10px; margin-top: 20px; }
+.hoofd-acties-mk button {
+  flex: 1; padding: 12px; border-radius: 7px;
+  font-weight: 700; font-size: 14px;
+  cursor: pointer; border: none;
+}
+.btn-primair-mk { background: var(--accent); color: #fff; }
+.btn-primair-mk:hover { opacity: 0.88; }
+.btn-secundair-mk {
+  background: var(--surface2); color: var(--muted);
+  border: 1px solid var(--border) !important;
+}
+
+.totaal-blok-mk {
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 10px;
+  padding: 16px; margin-top: 20px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+
+.toast-mk {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--accent); color: #000;
+  padding: 12px 20px; border-radius: 8px;
+  font-size: 13px; font-weight: 700;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  animation: slideUp 0.3s ease; z-index: 999;
+}
