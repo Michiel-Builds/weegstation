@@ -13,7 +13,6 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    # Geef de GITHUB_TOKEN expliciet write-permissies voor deze job
     permissions:
       contents: write
 
@@ -32,8 +31,24 @@ jobs:
 
       - name: Build Windows installer
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Voorkom signing-controle (geen cert beschikbaar)
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run dist
+
+      - name: Verify build output
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "=== dist/ inhoud ==="
+          Get-ChildItem dist/ -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
+          Write-Host "=== latest.yml (eerste 30 regels) ==="
+          if (Test-Path dist/latest.yml) {
+            Get-Content dist/latest.yml -TotalCount 30
+          } else {
+            Write-Host "LET OP: latest.yml niet gevonden!" -ForegroundColor Red
+            exit 1
+          }
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
