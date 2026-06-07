@@ -529,3 +529,190 @@ body table input[type="number"] {
   box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   animation: slideUp 0.3s ease; z-index: 999;
 }
+
+/* =============================================
+   KLANTEN-SIDEBAR + AUTOCOMPLETE (suffix: -kl)
+   ============================================= */
+
+.klanten-sidebar-kl {
+  border-top: 1px solid var(--border);
+  padding: 12px;
+  flex-shrink: 0;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.klanten-header-kl {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; padding: 0 4px;
+}
+.klanten-titel-kl {
+  font-size: 11px; color: var(--muted);
+  font-family: var(--mono); text-transform: uppercase;
+  letter-spacing: 0.08em; font-weight: 700;
+}
+.klanten-zoek-kl {
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border); color: var(--text);
+  font-family: var(--mono); font-size: 12px;
+  padding: 6px 8px; border-radius: 5px;
+  outline: none; margin-bottom: 10px;
+}
+.klanten-zoek-kl:focus { border-color: var(--accent2); }
+
+.klant-categorie-kl { margin-bottom: 6px; }
+.klant-cat-header-kl {
+  width: 100%; display: flex; justify-content: space-between;
+  align-items: center; padding: 6px 8px; background: transparent;
+  border: none; cursor: pointer; color: var(--text);
+  font-size: 12px; font-weight: 600;
+  border-radius: 5px; transition: background 0.1s;
+}
+.klant-cat-header-kl:hover { background: var(--surface2); }
+.klant-cat-count-kl {
+  font-size: 10px; color: var(--muted);
+  background: var(--surface2); padding: 2px 6px; border-radius: 8px;
+}
+.klant-cat-items-kl { padding-left: 8px; margin-bottom: 4px; }
+
+.klant-item-kl {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px; border-radius: 5px; cursor: default;
+  transition: background 0.1s; margin-bottom: 2px;
+}
+.klant-item-kl:hover { background: var(--surface2); }
+.klant-item-naam-kl {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.klant-item-sub-kl {
+  font-size: 10px; color: var(--muted);
+  font-family: var(--mono);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.klant-actie-kl {
+  background: transparent; border: none;
+  color: var(--muted); cursor: pointer; font-size: 12px;
+  padding: 2px 6px; border-radius: 3px; flex-shrink: 0;
+  transition: all 0.1s;
+}
+.klant-actie-kl:hover { color: var(--accent2); background: rgba(46,125,50,0.15); }
+.klant-actie-kl.del:hover { color: var(--red); background: rgba(224,82,82,0.15); }
+.klant-leeg-kl {
+  padding: 6px 12px; font-size: 11px;
+  color: var(--muted); font-style: italic;
+}
+
+.klant-acties-kl { display: flex; gap: 6px; margin-top: 10px; }
+.klant-btn-kl {
+  flex: 1; padding: 8px 6px; border-radius: 6px;
+  border: none; cursor: pointer;
+  font-size: 11px; font-weight: 600;
+  font-family: var(--sans); text-align: center;
+  transition: all 0.15s;
+}
+.klant-btn-kl.primair { background: var(--accent); color: #fff; }
+.klant-btn-kl.primair:hover { opacity: 0.88; }
+.klant-btn-kl.secundair {
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border) !important;
+}
+.klant-btn-kl.secundair:hover { background: var(--border); }
+
+.klant-import-status-kl {
+  margin-top: 8px; padding: 6px 8px; border-radius: 5px;
+  font-size: 11px; font-family: var(--mono);
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 6px;
+}
+.klant-import-status-kl.ok {
+  background: rgba(76,175,125,0.15); color: var(--green);
+  border: 1px solid rgba(76,175,125,0.3);
+}
+.klant-import-status-kl.fout {
+  background: rgba(224,82,82,0.15); color: var(--red);
+  border: 1px solid rgba(224,82,82,0.3);
+}
+.klant-status-sluit-kl {
+  background: none; border: none; color: inherit;
+  cursor: pointer; font-size: 14px; padding: 0 4px;
+  line-height: 1;
+}
+
+/* === MODAL === */
+.klant-modal-backdrop-kl {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 20px;
+}
+.klant-modal-kl {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 100%; max-width: 480px;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.klant-modal-header-kl {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px; border-bottom: 1px solid var(--border);
+}
+.klant-modal-titel-kl {
+  font-size: 14px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--accent2); font-family: var(--mono);
+}
+.klant-modal-body-kl { padding: 16px 20px; }
+.klant-modal-row-kl { margin-bottom: 10px; }
+.klant-modal-row-kl label {
+  display: block; font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  font-family: var(--mono); margin-bottom: 4px;
+}
+.klant-modal-row-kl input,
+.klant-modal-row-kl select {
+  width: 100%; background: var(--surface2);
+  border: 1px solid var(--border); color: var(--text);
+  font-family: var(--sans); font-size: 13px;
+  padding: 8px 10px; border-radius: 6px; outline: none;
+}
+.klant-modal-row-kl input:focus,
+.klant-modal-row-kl select:focus { border-color: var(--accent2); }
+.klant-modal-grid-kl {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+}
+.klant-modal-footer-kl {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 14px 20px; border-top: 1px solid var(--border);
+}
+
+/* === AUTOCOMPLETE DROPDOWN === */
+.klant-autocomplete-dropdown-kl {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  max-height: 280px; overflow-y: auto;
+}
+.klant-autocomplete-item-kl {
+  padding: 8px 12px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.klant-autocomplete-item-kl:last-child { border-bottom: none; }
+.klant-autocomplete-item-kl:hover,
+.klant-autocomplete-item-kl.highlight {
+  background: rgba(46,125,50,0.12);
+}
+
+/* === FIX: klikbaarheid === */
+.klanten-sidebar-kl input,
+.klanten-sidebar-kl select,
+.klanten-sidebar-kl button,
+.klanten-modal-kl input,
+.klanten-modal-kl select,
+.klanten-modal-kl button,
+.klant-autocomplete-dropdown-kl {
+  pointer-events: auto !important;
+  position: relative;
+}

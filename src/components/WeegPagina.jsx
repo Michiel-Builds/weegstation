@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { MATERIALEN } from "../data/stamdata";
+import KlantAutocomplete from "./KlantAutocomplete";
 
 function fmt(n)  { return Number(n).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtI(n) { return Number(n).toLocaleString("nl-NL", { maximumFractionDigits: 0 }); }
@@ -15,10 +16,9 @@ function maakBonnummerWeging(id) {
 export default function WeegPagina({
   gewichtWeegbrug, gewichtLoods,
   serverVerbonden, simulatieModus,
-  onWeging, wegingen = [], prijzen = {},
+  onWeging, wegingen = [], prijzen = {}, klanten = [],
 }) {
-  // === STATE ===
-  const [klanten, setKlanten] = useState(() =>
+  const [klantenLijst, setKlantenLijst] = useState(() =>
     Array.from({ length: 5 }, (_, i) => ({
       id: i + 1, naam: "", materiaalId: "",
       vol: null, leeg: null, netto: 0, weegTijd: null
@@ -28,16 +28,36 @@ export default function WeegPagina({
   const [toast, setToast] = useState(null);
   const idRef = useRef(6);
 
-  // === LIVE GEWICHT ===
   const huidigGewicht = actieveBron === "weegbrug" ? gewichtWeegbrug : gewichtLoods;
 
-  // === HELPERS ===
+  // Luister naar globale klant-selectie
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (typeof window !== "undefined" && window.__newtonGeselecteerdeKlant) {
+        const k = window.__newtonGeselecteerdeKlant;
+        window.__newtonGeselecteerdeKlant = null;
+        setKlantenLijst(prev => {
+          const nieuweLijst = [...prev];
+          const doelIdx = nieuweLijst.findIndex(kk => !kk.naam);
+          const idx = doelIdx !== -1 ? doelIdx : 0;
+          nieuweLijst[idx] = { ...nieuweLijst[idx], naam: k.naam };
+          return nieuweLijst;
+        });
+        toonToast(`✓ ${k.naam} ingevuld`);
+      }
+    }, 200);
+    return () => clearInterval(interval);
+  }, []);
+
   function toonToast(msg) {
     setToast(msg);
     setTimeout(() => setToast(null), 2500);
   }
   function updateKlant(id, veld, waarde) {
-    setKlanten(prev => prev.map(k => k.id === id ? { ...k, [veld]: waarde } : k));
+    setKlantenLijst(prev => prev.map(k => k.id === id ? { ...k, [veld]: waarde } : k));
+  }
+  function setNaam(id, naam) {
+    setKlantenLijst(prev => prev.map(k => k.id === id ? { ...k, naam } : k));
   }
   function berekenNetto(k) {
     const v = parseFloat(k.vol)  || 0;
@@ -45,13 +65,12 @@ export default function WeegPagina({
     return Math.max(0, v - l);
   }
 
-  // === WEEGFUNCTIES ===
   function weegNu(id, type) {
     if (huidigGewicht === null || huidigGewicht === undefined || huidigGewicht === 0) {
       toonToast("⚠ Wacht op weegbrug...");
       return;
     }
-    setKlanten(prev => prev.map(k => {
+    setKlantenLijst(prev => prev.map(k => {
       if (k.id !== id) return k;
       const updated = { ...k, [type]: String(huidigGewicht) };
       updated.netto = berekenNetto(updated);
@@ -62,10 +81,9 @@ export default function WeegPagina({
     toonToast(`✓ ${label} gewogen: ${fmtI(huidigGewicht)} kg`);
   }
 
-  // === KLANT-ACTIES ===
   function voegKlantToe() {
     const nieuweId = idRef.current++;
-    setKlanten(prev => [...prev, {
+    setKlantenLijst(prev => [...prev, {
       id: nieuweId, naam: "", materiaalId: "",
       vol: null, leeg: null, netto: 0, weegTijd: null
     }]);
@@ -76,23 +94,20 @@ export default function WeegPagina({
   }
   function verwijderKlant(id) {
     if (!confirm("Klant verwijderen?")) return;
-    setKlanten(prev => prev.filter(k => k.id !== id));
+    setKlantenLijst(prev => prev.filter(k => k.id !== id));
   }
   function allesWissen() {
-    if (klanten.length === 0) return;
+    if (klantenLijst.length === 0) return;
     if (!confirm("Alle klanten wissen?")) return;
     idRef.current = 6;
-    setKlanten(Array.from({ length: 5 }, (_, i) => ({
+    setKlantenLijst(Array.from({ length: 5 }, (_, i) => ({
       id: i + 1, naam: "", materiaalId: "",
       vol: null, leeg: null, netto: 0, weegTijd: null
     })));
   }
   function allesBevestigen() {
-    const klaar = klanten.filter(k => k.vol && k.leeg && k.materiaalId && k.naam);
-    if (klaar.length === 0) {
-      alert("Geen volledige wegingen om te bevestigen.");
-      return;
-    }
+    const klaar = klantenLijst.filter(k => k.vol && k.leeg && k.materiaalId && k.naam);
+    if (klaar.length === 0) { alert("Geen volledige wegingen om te bevestigen."); return; }
     klaar.forEach(k => {
       const mat = MATERIALEN.find(m => m.id === parseInt(k.materiaalId));
       const netto = berekenNetto(k);
@@ -114,9 +129,8 @@ export default function WeegPagina({
     toonToast(`✓ ${klaar.length} weging(en) bevestigd en opgeslagen`);
   }
 
-  // === A5 PRINT ===
   function printWeging(id) {
-    const k = klanten.find(x => x.id === id);
+    const k = klantenLijst.find(x => x.id === id);
     if (!k) return;
     if (!k.vol || !k.leeg || !k.naam || !k.materiaalId) {
       alert("Vul alle velden in (naam, materiaal, vol- en leeggewicht) voor het printen.");
@@ -128,85 +142,46 @@ export default function WeegPagina({
     const tijd  = nu.toLocaleTimeString("nl-NL");
     const bonnummer = maakBonnummerWeging(k.id);
     const netto = berekenNetto(k);
-
     const w = window.open("", "_blank");
     w.document.write(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-      <title>Weging ${k.naam}</title>
+      <!DOCTYPE html><html><head><title>Weging ${k.naam}</title>
       <style>
         @page { size: A5 portrait; margin: 12mm; }
-        body {
-          font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
-          padding: 0; margin: 0; color: #000; background: #fff;
-          font-size: 14px; line-height: 1.4;
-        }
+        body { font-family: "Segoe UI", -apple-system, sans-serif; margin: 0; color: #000; background: #fff; font-size: 14px; line-height: 1.4; }
         .bon { max-width: 100%; margin: 0 auto; }
         .kop { text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 16px; }
         .kop-titel { font-size: 22px; font-weight: 900; letter-spacing: 0.05em; margin-bottom: 4px; }
-        .kop-sub { font-size: 12px; color: #444; font-family: ui-monospace, monospace; }
-        .bonnr {
-          text-align: center; font-family: ui-monospace, monospace; font-size: 12px; color: #555;
-          margin-bottom: 16px; padding: 4px; background: #f0f0f0; border: 1px solid #ccc;
-        }
+        .kop-sub { font-size: 12px; color: #444; font-family: monospace; }
+        .bonnr { text-align: center; font-family: monospace; font-size: 12px; color: #555; margin-bottom: 16px; padding: 4px; background: #f0f0f0; border: 1px solid #ccc; }
         .sectie { margin-bottom: 14px; }
-        .sectie-titel {
-          font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em;
-          color: #666; font-weight: 700; padding-bottom: 4px; border-bottom: 1px solid #999; margin-bottom: 8px;
-        }
+        .sectie-titel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: #666; font-weight: 700; padding-bottom: 4px; border-bottom: 1px solid #999; margin-bottom: 8px; }
         .rij { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
-        .rij .l { font-weight: 600; }
-        .rij .r { font-family: ui-monospace, monospace; }
+        .rij .l { font-weight: 600; } .rij .r { font-family: monospace; }
         .netto-blok { margin: 20px 0; padding: 16px; border: 3px solid #000; text-align: center; }
-        .netto-label {
-          font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em;
-          color: #555; font-weight: 700; margin-bottom: 6px;
-        }
-        .netto-waarde { font-size: 36px; font-weight: 900; font-family: ui-monospace, monospace; line-height: 1; }
+        .netto-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #555; font-weight: 700; margin-bottom: 6px; }
+        .netto-waarde { font-size: 36px; font-weight: 900; font-family: monospace; }
         .handtekening { margin-top: 30px; padding-top: 10px; border-top: 1px dashed #999; }
         .handtekening-label { font-size: 11px; color: #666; margin-bottom: 40px; }
         .handtekening-lijn { border-top: 1px solid #000; width: 60%; margin: 0 auto; }
-        .footer {
-          text-align: center; font-size: 10px; color: #888;
-          margin-top: 20px; padding-top: 8px; border-top: 1px dashed #999;
-        }
-        @media print { body { font-size: 14px; } }
-      </style>
-      </head>
-      <body>
+        .footer { text-align: center; font-size: 10px; color: #888; margin-top: 20px; padding-top: 8px; border-top: 1px dashed #999; }
+      </style></head><body>
         <div class="bon">
-          <div class="kop">
-            <div class="kop-titel">METAALRECYCLING BULTERS</div>
-            <div class="kop-sub">Bewijs van weging</div>
-          </div>
+          <div class="kop"><div class="kop-titel">METAALRECYCLING BULTERS</div><div class="kop-sub">Bewijs van weging</div></div>
           <div class="bonnr">Bon ${bonnummer} · ${datum} · ${tijd}</div>
-          <div class="sectie">
-            <div class="sectie-titel">Klantgegevens</div>
+          <div class="sectie"><div class="sectie-titel">Klantgegevens</div>
             <div class="rij"><span class="l">Naam</span><span class="r">${k.naam}</span></div>
             <div class="rij"><span class="l">Materiaal</span><span class="r">${mat ? mat.naam : "—"}</span></div>
           </div>
-          <div class="sectie">
-            <div class="sectie-titel">Weging</div>
+          <div class="sectie"><div class="sectie-titel">Weging</div>
             <div class="rij"><span class="l">Vol gewicht</span><span class="r">${fmtI(parseFloat(k.vol))} kg</span></div>
             <div class="rij"><span class="l">Leeg gewicht</span><span class="r">${fmtI(parseFloat(k.leeg))} kg</span></div>
             <div class="rij"><span class="l">Bron</span><span class="r">${actieveBron === "weegbrug" ? "Weegbrug" : "Loods schaal"}</span></div>
           </div>
-          <div class="netto-blok">
-            <div class="netto-label">Netto gewicht</div>
-            <div class="netto-waarde">${fmtI(netto)} kg</div>
-          </div>
-          <div class="handtekening">
-            <div class="handtekening-label">Voor akkoord:</div>
-            <div class="handtekening-lijn"></div>
-          </div>
-          <div class="footer">
-            NewTon+ Metaalrecycling Bulters · Bon ${bonnummer}<br>
-            Deze bon dient als bewijs van weging
-          </div>
+          <div class="netto-blok"><div class="netto-label">Netto gewicht</div><div class="netto-waarde">${fmtI(netto)} kg</div></div>
+          <div class="handtekening"><div class="handtekening-label">Voor akkoord:</div><div class="handtekening-lijn"></div></div>
+          <div class="footer">NewTon+ Metaalrecycling Bulters · Bon ${bonnummer}<br>Deze bon dient als bewijs van weging</div>
         </div>
-      </body>
-      </html>
+      </body></html>
     `);
     w.document.close();
     w.focus();
@@ -214,14 +189,11 @@ export default function WeegPagina({
     toonToast("🖨 A5-bon geopend voor " + k.naam);
   }
 
-  // === TOTAAL ===
-  const totaalKlanten = klanten.length;
-  const totaalKg = klanten.reduce((s, k) => s + berekenNetto(k), 0);
+  const totaalKlanten = klantenLijst.length;
+  const totaalKg = klantenLijst.reduce((s, k) => s + berekenNetto(k), 0);
 
-  // === RENDER ===
   return (
     <div className="weeg-pagina-mk">
-      {/* Live weegbrug display */}
       <div className="weegbrug-display-mk">
         <div className="weegbrug-bron-mk">
           {actieveBron === "weegbrug" ? "🚛 Weegbrug — live" : "⚖ Loods schaal — live"}
@@ -236,25 +208,16 @@ export default function WeegPagina({
           {simulatieModus ? "Simulatie actief" : serverVerbonden ? "Live verbonden" : "Geen verbinding"}
         </div>
         <div className="weegbrug-controls-mk">
-          <button
-            className={"bron-btn-mk" + (actieveBron === "weegbrug" ? " actief" : "")}
-            onClick={() => setActieveBron("weegbrug")}
-          >🚛 Weegbrug</button>
-          <button
-            className={"bron-btn-mk" + (actieveBron === "loods" ? " actief" : "")}
-            onClick={() => setActieveBron("loods")}
-          >⚖ Loods schaal</button>
+          <button className={"bron-btn-mk" + (actieveBron === "weegbrug" ? " actief" : "")} onClick={() => setActieveBron("weegbrug")}>🚛 Weegbrug</button>
+          <button className={"bron-btn-mk" + (actieveBron === "loods" ? " actief" : "")} onClick={() => setActieveBron("loods")}>⚖ Loods schaal</button>
         </div>
       </div>
 
-      {/* Klant-kaarten */}
       <div className="klanten-lijst-mk">
-        {klanten.length === 0 ? (
-          <div className="klanten-leeg-mk">
-            Geen klanten. Klik "➕ Klant toevoegen".
-          </div>
+        {klantenLijst.length === 0 ? (
+          <div className="klanten-leeg-mk">Geen klanten. Klik "➕ Klant toevoegen".</div>
         ) : (
-          klanten.map((k, i) => {
+          klantenLijst.map((k, i) => {
             const netto = berekenNetto(k);
             const status = k.vol && k.leeg ? "klaar" : (k.vol || k.leeg) ? "bezig" : "wacht";
             const statusTekst = k.vol && k.leeg ? "✓ Klaar" : (k.vol || k.leeg) ? "⟳ Bezig" : "— Wacht";
@@ -264,30 +227,22 @@ export default function WeegPagina({
                 <div className="klant-header-mk">
                   <span className="klant-nr-mk">Klant {i + 1}</span>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    <span className={"klant-status-mk klant-status-" + status}>
-                      {statusTekst}
-                    </span>
-                    <button
-                      className="print-btn-mk"
-                      onClick={() => printWeging(k.id)}
-                      disabled={!kanPrinten}
-                    >🖨 Print</button>
-                    <button
-                      className="verwijder-btn-mk"
-                      onClick={() => verwijderKlant(k.id)}
-                      title="Verwijder klant"
-                    >🗑</button>
+                    <span className={"klant-status-mk klant-status-" + status}>{statusTekst}</span>
+                    <button className="print-btn-mk" onClick={() => printWeging(k.id)} disabled={!kanPrinten}>🖨 Print</button>
+                    <button className="verwijder-btn-mk" onClick={() => verwijderKlant(k.id)} title="Verwijder klant">🗑</button>
                   </div>
                 </div>
 
                 <div className="klant-top-mk">
-                  <input
-                    className="klant-input-mk"
-                    data-veld="naam"
-                    placeholder="Klant / Bedrijf"
-                    value={k.naam}
-                    onChange={e => updateKlant(k.id, "naam", e.target.value)}
-                  />
+                  <div style={{ position: "relative" }}>
+                    <KlantAutocomplete
+                      klanten={klanten}
+                      value={k.naam}
+                      onChange={v => setNaam(k.id, v)}
+                      onSelect={kl => setNaam(k.id, kl.naam)}
+                      placeholder="Klant / Bedrijf (typ of klik)"
+                    />
+                  </div>
                   <select
                     className="klant-select-mk"
                     data-veld="materiaalId"
@@ -302,28 +257,24 @@ export default function WeegPagina({
                 </div>
 
                 <div className="klant-mid-mk">
-                  {/* Vol gewicht */}
                   <div className={"gewicht-vak-mk" + (k.vol !== null ? " klaar" : "")}>
                     <div className="gewicht-vak-label-mk">Vol gewicht</div>
                     <div className={"gewicht-vak-waarde-mk" + (k.vol === null ? " leeg" : "")}>
                       {k.vol !== null ? fmtI(parseFloat(k.vol)) + " kg" : "— nog niet gewogen —"}
                     </div>
-                    <button
-                      className={"weeg-knop-mk" + (k.vol !== null ? " klaar" : "")}
-                      onClick={() => weegNu(k.id, "vol")}
-                    >{k.vol !== null ? "✓ Opnieuw wegen" : "⚖ Wegen"}</button>
+                    <button className={"weeg-knop-mk" + (k.vol !== null ? " klaar" : "")} onClick={() => weegNu(k.id, "vol")}>
+                      {k.vol !== null ? "✓ Opnieuw wegen" : "⚖ Wegen"}
+                    </button>
                   </div>
 
-                  {/* Leeg gewicht */}
                   <div className={"gewicht-vak-mk" + (k.leeg !== null ? " klaar" : "")}>
                     <div className="gewicht-vak-label-mk">Leeg gewicht</div>
                     <div className={"gewicht-vak-waarde-mk" + (k.leeg === null ? " leeg" : "")}>
                       {k.leeg !== null ? fmtI(parseFloat(k.leeg)) + " kg" : "— nog niet gewogen —"}
                     </div>
-                    <button
-                      className={"weeg-knop-mk" + (k.leeg !== null ? " klaar" : "")}
-                      onClick={() => weegNu(k.id, "leeg")}
-                    >{k.leeg !== null ? "✓ Opnieuw wegen" : "⚖ Wegen"}</button>
+                    <button className={"weeg-knop-mk" + (k.leeg !== null ? " klaar" : "")} onClick={() => weegNu(k.id, "leeg")}>
+                      {k.leeg !== null ? "✓ Opnieuw wegen" : "⚖ Wegen"}
+                    </button>
                   </div>
 
                   <div></div>
@@ -341,23 +292,15 @@ export default function WeegPagina({
         )}
       </div>
 
-      {/* Hoofd-acties */}
       <div className="hoofd-acties-mk">
         <button className="btn-primair-mk" onClick={voegKlantToe}>➕ Klant toevoegen</button>
         <button className="btn-secundair-mk" onClick={allesBevestigen}>✓ Alles bevestigen</button>
         <button className="btn-secundair-mk" onClick={allesWissen}>🗑 Wissen</button>
       </div>
 
-      {/* Totaal */}
       <div className="totaal-blok-mk">
-        <div>
-          <div className="lbl-mk">Aantal klanten</div>
-          <div className="kg-mk">{totaalKlanten}</div>
-        </div>
-        <div>
-          <div className="lbl-mk">Totaal gewicht</div>
-          <div className="kg-mk">{fmtI(totaalKg)} kg</div>
-        </div>
+        <div><div className="lbl-mk">Aantal klanten</div><div className="kg-mk">{totaalKlanten}</div></div>
+        <div><div className="lbl-mk">Totaal gewicht</div><div className="kg-mk">{fmtI(totaalKg)} kg</div></div>
       </div>
 
       {toast && <div className="toast-mk">{toast}</div>}

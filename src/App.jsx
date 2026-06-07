@@ -3,6 +3,7 @@ import "./styles.css";
 
 import { MATERIALEN, INIT_PRIJZEN } from "./data/stamdata";
 import { initWegingen } from "./utils/helpers";
+import { getInitKlanten, getZakelijk, getParticulier } from "./data/klanten";
 
 import LoginScherm     from "./components/LoginScherm";
 import ChauffeurScherm from "./components/ChauffeurScherm";
@@ -11,6 +12,7 @@ import XMLImport       from "./components/XMLImport";
 import BonBouwer       from "./components/BonBouwer";
 import BarChart        from "./components/BarChart";
 import Calculator      from "./components/Calculator";
+import KlantenSidebar  from "./components/KlantenSidebar";
 
 export default function App() {
   const [gebruiker, setGebruiker]     = useState(null);
@@ -26,8 +28,12 @@ export default function App() {
   const [serverVerbonden, setServerVerbonden] = useState(false);
   const [serverIP, setServerIP]               = useState("localhost");
   const [simulatieModus, setSimulatieModus]   = useState(false);
+
+  // KLANTEN — centrale state
+  const [klanten, setKlanten] = useState(() => getInitKlanten());
+
   const wsRef = useRef(null);
-  // Versie-indicator in venstertitel (handig voor updates-test)
+
   useEffect(() => {
     document.title = "NewTon+ v1.0.8 | Metaalrecycling Bulters";
   }, []);
@@ -160,6 +166,12 @@ export default function App() {
               </button>
             ))}
           </nav>
+
+          <KlantenSidebar
+            klanten={klanten}
+            setKlanten={setKlanten}
+          />
+
           <div className="sidebar-footer">
             <div className="user-info">
               <span className="user-name">{gebruiker.naam}</span>
@@ -173,9 +185,7 @@ export default function App() {
         </aside>
         <main className="main">
           <div className="topbar">
-            <div className="page-title">
-              {titels[pagina]}
-            </div>
+            <div className="page-title">{titels[pagina]}</div>
             <div className="topbar-center">Metaalrecycling Bulters</div>
             <div className="topbar-right">
               <div className="status-pill">
@@ -232,7 +242,7 @@ export default function App() {
                   <div className="kpi-card"><div className="kpi-label">Wegingen vandaag</div><div className="kpi-value">{vandaag.length}</div><div className="kpi-sub">vrachten geregistreerd</div></div>
                   <div className="kpi-card"><div className="kpi-label">Totaal gewicht</div><div className="kpi-value">{(totaalKg / 1000).toFixed(1)}<span style={{ fontSize: 16, color: "var(--muted)" }}>t</span></div><div className="kpi-sub">alle wegingen</div></div>
                   <div className="kpi-card"><div className="kpi-label">Totale omzet</div><div className="kpi-value" style={{ fontSize: 22 }}>€ {totaalOmzet.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}</div><div className="kpi-sub">op basis van prijzen</div></div>
-                  <div className="kpi-card"><div className="kpi-label">Actieve materialen</div><div className="kpi-value">{MATERIALEN.length}</div><div className="kpi-sub">soorten geconfigureerd</div></div>
+                  <div className="kpi-card"><div className="kpi-label">Klanten in DB</div><div className="kpi-value">{klanten.length}</div><div className="kpi-sub">{getZakelijk(klanten).length} zakelijk · {getParticulier(klanten).length} particulier</div></div>
                 </div>
                 <div className="two-col">
                   <div className="panel">
@@ -350,7 +360,7 @@ export default function App() {
                 </div>
               </div>
             )}
-            {pagina === "bon" && <BonBouwer prijzen={prijzen} wegingen={wegingen} />}
+            {pagina === "bon" && <BonBouwer prijzen={prijzen} wegingen={wegingen} klanten={klanten} />}
             {pagina === "wegen" && (
               <WeegPagina
                 gewichtWeegbrug={gewichtWeegbrug}
@@ -360,6 +370,7 @@ export default function App() {
                 onWeging={verstuurWeging}
                 wegingen={wegingen}
                 prijzen={prijzen}
+                klanten={klanten}
               />
             )}
             {pagina === "import" && (
