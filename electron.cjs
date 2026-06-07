@@ -37,10 +37,29 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
   const posities = laadPosities();
   const p = posities[hash] || {};
 
+  // Check if required files exist
+  const iconPath = path.join(__dirname, "build", "icon.ico");
+  const indexPath = path.join(__dirname, "dist", "index.html");
+  const preloadPath = path.join(__dirname, "preload.js");
+
+  if (!fs.existsSync(indexPath)) {
+    log.error("KRITIEKE FOUT: dist/index.html niet gevonden op:", indexPath);
+    dialog.showErrorBox("Fout", "Gebouwde bestanden ontbreken.\nZorg ervoor dat 'npm run build' is uitgevoerd.");
+    app.quit();
+    return null;
+  }
+
+  if (!fs.existsSync(preloadPath)) {
+    log.error("KRITIEKE FOUT: preload.js niet gevonden op:", preloadPath);
+    dialog.showErrorBox("Fout", "Preload script ontbreekt.");
+    app.quit();
+    return null;
+  }
+
   const opties = {
     width: p.w || defaultW,
     height: p.h || defaultH,
-    icon: path.join(__dirname, "build", "icon.ico"),
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     title: label,
     backgroundColor: "#0f1011",
     show: false,
@@ -48,7 +67,7 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
       nodeIntegration: false,
       contextIsolation: true,
       devTools: true,
-      preload: path.join(__dirname, "preload.js"),
+      preload: preloadPath,
     },
   };
   if (p.x !== undefined) opties.x = p.x;
@@ -57,7 +76,7 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
   const win = new BrowserWindow(opties);
   Menu.setApplicationMenu(null);
 
-  win.loadFile(path.join(__dirname, "dist", "index.html"), { hash });
+  win.loadFile(indexPath, { hash });
   win.once("ready-to-show", () => win.show());
 
   // F12 om DevTools te openen
@@ -98,8 +117,26 @@ function createSplash() {
   } else {
     splashPath = path.join(__dirname, "build", "splash.html");
   }
+  
+  // Check if splash file exists
+  if (!fs.existsSync(splashPath)) {
+    log.error("WAARSCHUWING: splash.html niet gevonden op:", splashPath);
+    // Continue without splash, don't crash
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.close();
+      splashWindow = null;
+    }
+    return;
+  }
+  
   log.info("Splash-pad:", splashPath);
-  splashWindow.loadFile(splashPath);
+  splashWindow.loadFile(splashPath).catch((err) => {
+    log.error("Splash laden mislukt:", err);
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.close();
+      splashWindow = null;
+    }
+  });
 }
 
 function createWindow() {
@@ -126,17 +163,52 @@ function openWegenVenster() {
   wegenWindow.on("closed", () => { wegenWindow = null; });
 }
 
-ipcMain.handle("open-bon-venster", () => openBonVenster());
-ipcMain.handle("open-wegen-venster", () => openWegenVenster());
-ipcMain.handle("sluit-venster", (event) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (win && win !== mainWindow) win.close();
+ipcMain.handle("open-bon-venster", () => {
+  try {
+    openBonVenster();
+  } catch (err) {
+    log.error("Fout bij openen bon-venster:", err);
+    throw err;
+  }
 });
-ipcMain.handle("laad-posities", () => laadPosities());
+
+ipcMain.handle("open-wegen-venster", () => {
+  try {
+    openWegenVenster();
+  } catch (err) {
+    log.error("Fout bij openen wegen-venster:", err);
+    throw err;
+  }
+});
+
+ipcMain.handle("sluit-venster", (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && win !== mainWindow) win.close();
+  } catch (err) {
+    log.error("Fout bij sluiten venster:", err);
+    throw err;
+  }
+});
+
+ipcMain.handle("laad-posities", () => {
+  try {
+    return laadPosities();
+  } catch (err) {
+    log.error("Fout bij laden posities:", err);
+    return {};
+  }
+});
+
 ipcMain.handle("sla-positie", (event, { vensterType, positie }) => {
-  const posities = laadPosities();
-  posities[vensterType] = positie;
-  bewaarPosities(posities);
+  try {
+    const posities = laadPosities();
+    posities[vensterType] = positie;
+    bewaarPosities(posities);
+  } catch (err) {
+    log.error("Fout bij bewaren positie:", err);
+    throw err;
+  }
 });
 
 const { autoUpdater } = require("electron-updater");
@@ -171,19 +243,45 @@ autoUpdater.on("update-downloaded", function (info) {
     if (choice === 0) autoUpdater.quitAndInstall();
   }
 });
-autoUpdater.on("error", function (err) { log.error("Update-fout:", err.message); });
+autoUpdater.on("error", function (err) { 
+  log.error("Update-fout:", err.message);
+  if (mainWindow) {
+    dialog.showErrorBox("Update Fout", "Er was een probleem bij het controleren op updates:\n" + err.message);
+  }
+});
 
 app.whenReady().then(function () {
-  createSplash();
-  setTimeout(function () {
-    createWindow();
+  try {
+    createSplash();
     setTimeout(function () {
-      if (splashWindow) splashWindow.close();
-    }, 800);
-  }, 600);
-  setTimeout(function () {
-    autoUpdater.checkForUpdates().catch(function (err) { log.error("Check mislukt:", err.message); });
-  }, 5000);
+      try {
+        createWindow();
+        if (!mainWindow) {
+          log.error("Venster aanmaking mislukt");
+          app.quit();
+          return;
+        }
+        setTimeout(function () {
+          if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
+        }, 800);
+      } catch (err) {
+        log.error("Fout bij venster aanmaking:", err);
+        app.quit();
+      }
+    }, 600);
+    setTimeout(function () {
+      autoUpdater.checkForUpdates().catch(function (err) { 
+        log.error("Check updates mislukt:", err.message); 
+      });
+    }, 5000);
+  } catch (err) {
+    log.error("KRITIEKE FOUT bij app startup:", err);
+    dialog.showErrorBox("Startup Fout", "NewTon+ kon niet starten:\n" + err.message);
+    app.quit();
+  }
+}).catch(function (err) {
+  log.error("KRITIEKE FOUT: app.whenReady() rejected:", err);
+  app.quit();
 });
 
 app.on("window-all-closed", function () {
@@ -192,4 +290,29 @@ app.on("window-all-closed", function () {
 
 app.on("activate", function () {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// Global error handlers
+process.on("uncaughtException", function (err) {
+  log.error("=== UNCAUGHT EXCEPTION ===");
+  log.error(err);
+  log.error("========================");
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    dialog.showErrorBox(
+      "Kritieke Fout",
+      "NewTon+ is gecrashd:\n" + err.message + "\n\nZie log bestanden voor details."
+    );
+  }
+  app.quit();
+});
+
+process.on("unhandledRejection", function (reason, promise) {
+  log.error("=== UNHANDLED REJECTION ===");
+  log.error("Promise:", promise);
+  log.error("Reason:", reason);
+  log.error("============================");
+});
+
+app.on("before-quit", function () {
+  log.info("=== NewTon+ wordt afgesloten ===");
 });

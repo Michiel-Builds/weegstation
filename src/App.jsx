@@ -62,12 +62,27 @@ export default function App() {
       (window.location.hostname === "localhost" ||
        window.location.hostname === "127.0.0.1" ||
        /^192\.168\./.test(window.location.hostname));
-    if (!isLokaal) { activeerSimulatie(); return; }
+    if (!isLokaal) { 
+      console.warn("WAARSCHUWING: App draait niet lokaal. Server-verbinding uitgeschakeld."); 
+      activeerSimulatie(); 
+      return; 
+    }
     function verbindServer(ip) {
       let ws;
-      try { ws = new WebSocket(`ws://${ip}:3000`); } catch (e) { activeerSimulatie(); return; }
+      try { 
+        ws = new WebSocket(`ws://${ip}:3000`); 
+      } catch (e) { 
+        console.error("WebSocket constructie fout:", e);
+        activeerSimulatie(); 
+        return; 
+      }
       wsRef.current = ws;
-      ws.onopen = () => { setServerVerbonden(true); setSimulatieModus(false); toonToast("✓ Live verbonden"); };
+      ws.onopen = () => { 
+        console.log("✓ Server verbonden op ws://" + ip + ":3000");
+        setServerVerbonden(true); 
+        setSimulatieModus(false); 
+        toonToast("✓ Live verbonden"); 
+      };
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
@@ -89,10 +104,21 @@ export default function App() {
               return updated;
             });
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error("Fout bij WebSocket bericht verwerking:", e);
+        }
       };
-      ws.onclose = () => { setServerVerbonden(false); setTimeout(() => gebruiker && verbindServer(ip), 5000); };
-      ws.onerror = () => { setServerVerbonden(false); activeerSimulatie(); };
+      ws.onclose = () => { 
+        console.warn("Server verbinding verbroken. Herverbinden in 5 seconden...");
+        setServerVerbonden(false); 
+        setTimeout(() => gebruiker && verbindServer(ip), 5000); 
+      };
+      ws.onerror = (err) => { 
+        console.error("WebSocket fout:", err);
+        setServerVerbonden(false); 
+        activeerSimulatie(); 
+        toonToast("⚠ Server niet bereikbaar - Simulatie modus"); 
+      };
     }
     verbindServer(serverIP);
     return () => { if (wsRef.current) wsRef.current.close(); };
@@ -117,6 +143,7 @@ export default function App() {
   }, []);
 
   function activeerSimulatie() {
+    console.warn("⚠ SIMULATIE MODUS GEACTIVEERD - Gewichten zijn demo data!");
     if (wegingen.length === 0) {
       const initData = initWegingen();
       setWegingen(initData);
