@@ -48,7 +48,7 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
       nodeIntegration: false,
       contextIsolation: true,
       devTools: true,
-      preload: path.join(__dirname, "electron", "preload.js"),
+      preload: path.join(__dirname, "preload.js"),
     },
   };
   if (p.x !== undefined) opties.x = p.x;

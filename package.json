@@ -1,6 +1,6 @@
 {
   "name": "bulters-newton-app",
-  "version": "1.0.14",
+  "version": "1.1.0",
   "type": "module",
   "description": "NewTon+ Metaalrecycling Bulters - voorraad- en weegsysteem voor metaalhandel",
   "author": "Michiel Bulters",
@@ -64,13 +64,15 @@
       "owner": "Michiel-Builds",
       "repo": "newton-plus"
     },
-    "files": [
+        "files": [
       "dist/**/*",
       "electron.cjs",
+      "preload.js",
       "package.json",
       "build/splash.html",
       "build/icon-512.png"
     ],
+
     "extraResources": [
       {
         "to": "splash.html",
