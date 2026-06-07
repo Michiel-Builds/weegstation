@@ -53,7 +53,7 @@ export default function App() {
   const wsRef = useRef(null);
 
   useEffect(() => {
-    document.title = "NewTon+ v1.0.8 | Metaalrecycling Bulters";
+    document.title = "NewTon+ v1.1.1 | Metaalrecycling Bulters";
   }, []);
 
   useEffect(() => {

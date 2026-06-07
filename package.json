@@ -1,6 +1,6 @@
 {
   "name": "bulters-newton-app",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "description": "NewTon+ Metaalrecycling Bulters - voorraad- en weegsysteem voor metaalhandel",
   "author": "Michiel Bulters",
@@ -34,11 +34,16 @@
     "appId": "nl.bulters.newton",
     "productName": "NewTon+",
     "copyright": "Copyright © 2026 Bulters Metaalrecycling",
+    "asarUnpack": [
+      "dist/**/*"
+    ],
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico",
@@ -51,7 +56,10 @@
       "oneClick": false,
       "shortcutName": "NewTon+ Metaalrecycling",
       "createDesktopShortcut": true,
-      "installerLanguages": ["nl_NL", "en_US"],
+      "installerLanguages": [
+        "nl_NL",
+        "en_US"
+      ],
       "createStartMenuShortcut": true,
       "deleteAppDataOnUninstall": true,
       "allowToChangeInstallationDirectory": true,
@@ -64,7 +72,7 @@
       "owner": "Michiel-Builds",
       "repo": "newton-plus"
     },
-        "files": [
+    "files": [
       "dist/**/*",
       "electron.cjs",
       "preload.js",
@@ -72,7 +80,6 @@
       "build/splash.html",
       "build/icon-512.png"
     ],
-
     "extraResources": [
       {
         "to": "splash.html",
