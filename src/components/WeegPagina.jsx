@@ -2,15 +2,15 @@ import { useState, useEffect, useRef } from "react";
 import { MATERIALEN } from "../data/stamdata";
 import KlantAutocomplete from "./KlantAutocomplete";
 
-function fmt(n)  { return Number(n).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmt(n) { return Number(n).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtI(n) { return Number(n).toLocaleString("nl-NL", { maximumFractionDigits: 0 }); }
 
 function maakBonnummerWeging(id) {
   const nu = new Date();
   return "W-" + nu.getFullYear() +
-         String(nu.getMonth() + 1).padStart(2, "0") +
-         String(nu.getDate()).padStart(2, "0") +
-         "-" + String(id).padStart(3, "0");
+    String(nu.getMonth() + 1).padStart(2, "0") +
+    String(nu.getDate()).padStart(2, "0") +
+    "-" + String(id).padStart(3, "0");
 }
 
 export default function WeegPagina({
@@ -21,7 +21,8 @@ export default function WeegPagina({
   const [klantenLijst, setKlantenLijst] = useState(() =>
     Array.from({ length: 5 }, (_, i) => ({
       id: i + 1, naam: "", materiaalId: "",
-      vol: null, leeg: null, netto: 0, weegTijd: null
+      vol: null, leeg: null, netto: 0, weegTijd: null,
+      bevestigd: false
     }))
   );
   const [actieveBron, setActieveBron] = useState("weegbrug");
@@ -60,7 +61,7 @@ export default function WeegPagina({
     setKlantenLijst(prev => prev.map(k => k.id === id ? { ...k, naam } : k));
   }
   function berekenNetto(k) {
-    const v = parseFloat(k.vol)  || 0;
+    const v = parseFloat(k.vol) || 0;
     const l = parseFloat(k.leeg) || 0;
     return Math.max(0, v - l);
   }
@@ -85,7 +86,8 @@ export default function WeegPagina({
     const nieuweId = idRef.current++;
     setKlantenLijst(prev => [...prev, {
       id: nieuweId, naam: "", materiaalId: "",
-      vol: null, leeg: null, netto: 0, weegTijd: null
+      vol: null, leeg: null, netto: 0, weegTijd: null,
+      bevestigd: false
     }]);
     setTimeout(() => {
       const el = document.querySelector(`[data-klant-id="${nieuweId}"] [data-veld="naam"]`);
@@ -102,31 +104,59 @@ export default function WeegPagina({
     idRef.current = 6;
     setKlantenLijst(Array.from({ length: 5 }, (_, i) => ({
       id: i + 1, naam: "", materiaalId: "",
-      vol: null, leeg: null, netto: 0, weegTijd: null
+      vol: null, leeg: null, netto: 0, weegTijd: null,
+      bevestigd: false
     })));
   }
-  function allesBevestigen() {
-    const klaar = klantenLijst.filter(k => k.vol && k.leeg && k.materiaalId && k.naam);
-    if (klaar.length === 0) { alert("Geen volledige wegingen om te bevestigen."); return; }
-    klaar.forEach(k => {
-      const mat = MATERIALEN.find(m => m.id === parseInt(k.materiaalId));
-      const netto = berekenNetto(k);
-      const weging = {
-        id: Date.now() + k.id,
-        bonnummer: maakBonnummerWeging(k.id),
-        kenteken: "–",
-        materiaal: mat,
-        gewicht: netto,
-        prijs: parseFloat(prijzen[mat?.id] || 0),
-        totaal: netto * parseFloat(prijzen[mat?.id] || 0),
-        tijd:  k.weegTijd || new Date().toLocaleTimeString("nl-NL"),
-        datum: new Date().toLocaleDateString("nl-NL"),
-        bron: actieveBron,
-        isNieuw: true,
-      };
-      if (onWeging) onWeging(weging);
-    });
-    toonToast(`✓ ${klaar.length} weging(en) bevestigd en opgeslagen`);
+
+  // PER-KLANT BEVESTIGEN — stuurt vol, leeg, netto apart mee
+  function bevestigKlant(id) {
+    const k = klantenLijst.find(x => x.id === id);
+    if (!k) return;
+    if (!k.vol || !k.leeg || !k.materiaalId || !k.naam) {
+      alert("Vul alle velden in (naam, materiaal, vol- en leeggewicht).");
+      return;
+    }
+    const mat = MATERIALEN.find(m => m.id === parseInt(k.materiaalId));
+    const volGew  = parseFloat(k.vol);
+    const leegGew = parseFloat(k.leeg);
+    const netto   = berekenNetto(k);
+    const weging = {
+      id: Date.now() + k.id,
+      bonnummer: maakBonnummerWeging(k.id),
+      kenteken: "–",
+      klantNaam: k.naam,
+      materiaal: mat,
+      // DRIE GEWICHTEN APART MEEGEVEN
+      gewicht: netto,         // netto (backwards compat met oude code)
+      vol: volGew,            // vol-gewicht
+      leeg: leegGew,          // leeg-gewicht
+      netto: netto,           // netto expliciet
+      aftrek: 0,              // geen aftrek in weging-scherm
+      prijs: parseFloat(prijzen[mat?.id] || 0),
+      totaal: netto * parseFloat(prijzen[mat?.id] || 0),
+      tijd: k.weegTijd || new Date().toLocaleTimeString("nl-NL"),
+      datum: new Date().toLocaleDateString("nl-NL"),
+      bron: actieveBron,
+      isNieuw: true,
+    };
+    if (onWeging) onWeging(weging);
+
+    // Markeer als bevestigd + reset waarden (behoud klantnaam + materiaal)
+    setKlantenLijst(prev => prev.map(x => x.id === id ? {
+      ...x,
+      vol: null,
+      leeg: null,
+      netto: 0,
+      weegTijd: null,
+      bevestigd: true
+    } : x));
+
+    setTimeout(() => {
+      setKlantenLijst(prev => prev.map(x => x.id === id ? { ...x, bevestigd: false } : x));
+    }, 2000);
+
+    toonToast(`✓ ${k.naam} · ${mat?.naam || ""} · vol ${fmtI(volGew)} − leeg ${fmtI(leegGew)} = ${fmtI(netto)} kg netto`);
   }
 
   function printWeging(id) {
@@ -139,50 +169,50 @@ export default function WeegPagina({
     const mat = MATERIALEN.find(m => m.id === parseInt(k.materiaalId));
     const nu = new Date();
     const datum = nu.toLocaleDateString("nl-NL");
-    const tijd  = nu.toLocaleTimeString("nl-NL");
+    const tijd = nu.toLocaleTimeString("nl-NL");
     const bonnummer = maakBonnummerWeging(k.id);
     const netto = berekenNetto(k);
     const w = window.open("", "_blank");
     w.document.write(`
-      <!DOCTYPE html><html><head><title>Weging ${k.naam}</title>
-      <style>
-        @page { size: A5 portrait; margin: 12mm; }
-        body { font-family: "Segoe UI", -apple-system, sans-serif; margin: 0; color: #000; background: #fff; font-size: 14px; line-height: 1.4; }
-        .bon { max-width: 100%; margin: 0 auto; }
-        .kop { text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 16px; }
-        .kop-titel { font-size: 22px; font-weight: 900; letter-spacing: 0.05em; margin-bottom: 4px; }
-        .kop-sub { font-size: 12px; color: #444; font-family: monospace; }
-        .bonnr { text-align: center; font-family: monospace; font-size: 12px; color: #555; margin-bottom: 16px; padding: 4px; background: #f0f0f0; border: 1px solid #ccc; }
-        .sectie { margin-bottom: 14px; }
-        .sectie-titel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: #666; font-weight: 700; padding-bottom: 4px; border-bottom: 1px solid #999; margin-bottom: 8px; }
-        .rij { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
-        .rij .l { font-weight: 600; } .rij .r { font-family: monospace; }
-        .netto-blok { margin: 20px 0; padding: 16px; border: 3px solid #000; text-align: center; }
-        .netto-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #555; font-weight: 700; margin-bottom: 6px; }
-        .netto-waarde { font-size: 36px; font-weight: 900; font-family: monospace; }
-        .handtekening { margin-top: 30px; padding-top: 10px; border-top: 1px dashed #999; }
-        .handtekening-label { font-size: 11px; color: #666; margin-bottom: 40px; }
-        .handtekening-lijn { border-top: 1px solid #000; width: 60%; margin: 0 auto; }
-        .footer { text-align: center; font-size: 10px; color: #888; margin-top: 20px; padding-top: 8px; border-top: 1px dashed #999; }
-      </style></head><body>
-        <div class="bon">
-          <div class="kop"><div class="kop-titel">METAALRECYCLING BULTERS</div><div class="kop-sub">Bewijs van weging</div></div>
-          <div class="bonnr">Bon ${bonnummer} · ${datum} · ${tijd}</div>
-          <div class="sectie"><div class="sectie-titel">Klantgegevens</div>
-            <div class="rij"><span class="l">Naam</span><span class="r">${k.naam}</span></div>
-            <div class="rij"><span class="l">Materiaal</span><span class="r">${mat ? mat.naam : "—"}</span></div>
-          </div>
-          <div class="sectie"><div class="sectie-titel">Weging</div>
-            <div class="rij"><span class="l">Vol gewicht</span><span class="r">${fmtI(parseFloat(k.vol))} kg</span></div>
-            <div class="rij"><span class="l">Leeg gewicht</span><span class="r">${fmtI(parseFloat(k.leeg))} kg</span></div>
-            <div class="rij"><span class="l">Bron</span><span class="r">${actieveBron === "weegbrug" ? "Weegbrug" : "Loods schaal"}</span></div>
-          </div>
-          <div class="netto-blok"><div class="netto-label">Netto gewicht</div><div class="netto-waarde">${fmtI(netto)} kg</div></div>
-          <div class="handtekening"><div class="handtekening-label">Voor akkoord:</div><div class="handtekening-lijn"></div></div>
-          <div class="footer">NewTon+ Metaalrecycling Bulters · Bon ${bonnummer}<br>Deze bon dient als bewijs van weging</div>
-        </div>
-      </body></html>
-    `);
+<!DOCTYPE html><html><head><title>Weging ${k.naam}</title>
+<style>
+@page { size: A5 portrait; margin: 12mm; }
+body { font-family: "Segoe UI", -apple-system, sans-serif; margin: 0; color: #000; background: #fff; font-size: 14px; line-height: 1.4; }
+.bon { max-width: 100%; margin: 0 auto; }
+.kop { text-align: center; border-bottom: 3px solid #000; padding-bottom: 10px; margin-bottom: 16px; }
+.kop-titel { font-size: 22px; font-weight: 900; letter-spacing: 0.05em; margin-bottom: 4px; }
+.kop-sub { font-size: 12px; color: #444; font-family: monospace; }
+.bonnr { text-align: center; font-family: monospace; font-size: 12px; color: #555; margin-bottom: 16px; padding: 4px; background: #f0f0f0; border: 1px solid #ccc; }
+.sectie { margin-bottom: 14px; }
+.sectie-titel { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: #666; font-weight: 700; padding-bottom: 4px; border-bottom: 1px solid #999; margin-bottom: 8px; }
+.rij { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
+.rij .l { font-weight: 600; } .rij .r { font-family: monospace; }
+.netto-blok { margin: 20px 0; padding: 16px; border: 3px solid #000; text-align: center; }
+.netto-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.15em; color: #555; font-weight: 700; margin-bottom: 6px; }
+.netto-waarde { font-size: 36px; font-weight: 900; font-family: monospace; }
+.handtekening { margin-top: 30px; padding-top: 10px; border-top: 1px dashed #999; }
+.handtekening-label { font-size: 11px; color: #666; margin-bottom: 40px; }
+.handtekening-lijn { border-top: 1px solid #000; width: 60%; margin: 0 auto; }
+.footer { text-align: center; font-size: 10px; color: #888; margin-top: 20px; padding-top: 8px; border-top: 1px dashed #999; }
+</style></head><body>
+<div class="bon">
+<div class="kop"><div class="kop-titel">METAALRECYCLING BULTERS</div><div class="kop-sub">Bewijs van weging</div></div>
+<div class="bonnr">Bon ${bonnummer} · ${datum} · ${tijd}</div>
+<div class="sectie"><div class="sectie-titel">Klantgegevens</div>
+<div class="rij"><span class="l">Naam</span><span class="r">${k.naam}</span></div>
+<div class="rij"><span class="l">Materiaal</span><span class="r">${mat ? mat.naam : "—"}</span></div>
+</div>
+<div class="sectie"><div class="sectie-titel">Weging</div>
+<div class="rij"><span class="l">Vol gewicht</span><span class="r">${fmtI(parseFloat(k.vol))} kg</span></div>
+<div class="rij"><span class="l">Leeg gewicht</span><span class="r">${fmtI(parseFloat(k.leeg))} kg</span></div>
+<div class="rij"><span class="l">Bron</span><span class="r">${actieveBron === "weegbrug" ? "Weegbrug" : "Loods schaal"}</span></div>
+</div>
+<div class="netto-blok"><div class="netto-label">Netto gewicht</div><div class="netto-waarde">${fmtI(netto)} kg</div></div>
+<div class="handtekening"><div class="handtekening-label">Voor akkoord:</div><div class="handtekening-lijn"></div></div>
+<div class="footer">NewTon+ Metaalrecycling Bulters · Bon ${bonnummer}<br>Deze bon dient als bewijs van weging</div>
+</div>
+</body></html>
+`);
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 300);
@@ -221,9 +251,14 @@ export default function WeegPagina({
             const netto = berekenNetto(k);
             const status = k.vol && k.leeg ? "klaar" : (k.vol || k.leeg) ? "bezig" : "wacht";
             const statusTekst = k.vol && k.leeg ? "✓ Klaar" : (k.vol || k.leeg) ? "⟳ Bezig" : "— Wacht";
-            const kanPrinten = !!(k.vol && k.leeg && k.naam && k.materiaalId);
+            const kanBevestigen = !!(k.vol && k.leeg && k.naam && k.materiaalId);
+            const kanPrinten = kanBevestigen;
             return (
-              <div key={k.id} className="klant-kaart-mk" data-klant-id={k.id}>
+              <div key={k.id} className="klant-kaart-mk" data-klant-id={k.id} style={{
+                borderColor: k.bevestigd ? "#2e7d32" : undefined,
+                background: k.bevestigd ? "rgba(46,125,50,0.08)" : undefined,
+                transition: "all 0.3s"
+              }}>
                 <div className="klant-header-mk">
                   <span className="klant-nr-mk">Klant {i + 1}</span>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -286,6 +321,42 @@ export default function WeegPagina({
                     <span className="kg-mk">{fmtI(netto)} kg</span>
                   </div>
                 )}
+
+                {/* BEVESTIG-KNOP PER KLANT */}
+                <div style={{
+                  marginTop: 12,
+                  padding: 10,
+                  background: kanBevestigen ? "rgba(46,125,50,0.08)" : "var(--surface2)",
+                  border: "1px solid " + (kanBevestigen ? "var(--accent)" : "var(--border)"),
+                  borderRadius: 6,
+                  display: "flex",
+                  gap: 8,
+                  alignItems: "center"
+                }}>
+                  <button
+                    onClick={() => bevestigKlant(k.id)}
+                    disabled={!kanBevestigen}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      background: k.bevestigd ? "#2e7d32" : (kanBevestigen ? "var(--accent)" : "var(--surface2)"),
+                      color: kanBevestigen ? "#fff" : "var(--muted)",
+                      border: "none",
+                      borderRadius: 5,
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: kanBevestigen ? "pointer" : "not-allowed",
+                      fontFamily: "var(--sans)"
+                    }}
+                  >
+                    {k.bevestigd ? "✓ Bevestigd!" : "✓ Bevestig weging"}
+                  </button>
+                  {k.naam && (
+                    <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>
+                      {k.naam}
+                    </span>
+                  )}
+                </div>
               </div>
             );
           })
@@ -294,7 +365,6 @@ export default function WeegPagina({
 
       <div className="hoofd-acties-mk">
         <button className="btn-primair-mk" onClick={voegKlantToe}>➕ Klant toevoegen</button>
-        <button className="btn-secundair-mk" onClick={allesBevestigen}>✓ Alles bevestigen</button>
         <button className="btn-secundair-mk" onClick={allesWissen}>🗑 Wissen</button>
       </div>
 

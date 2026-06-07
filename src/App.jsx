@@ -5,29 +5,49 @@ import { MATERIALEN, INIT_PRIJZEN } from "./data/stamdata";
 import { initWegingen } from "./utils/helpers";
 import { getInitKlanten, getZakelijk, getParticulier } from "./data/klanten";
 
-import LoginScherm     from "./components/LoginScherm";
+import LoginScherm from "./components/LoginScherm";
 import ChauffeurScherm from "./components/ChauffeurScherm";
-import WeegPagina      from "./components/WeegPagina";
-import XMLImport       from "./components/XMLImport";
-import BonBouwer       from "./components/BonBouwer";
-import BarChart        from "./components/BarChart";
-import Calculator      from "./components/Calculator";
-import KlantenSidebar  from "./components/KlantenSidebar";
+import WeegPagina from "./components/WeegPagina";
+import XMLImport from "./components/XMLImport";
+import BonBouwer from "./components/BonBouwer";
+import BarChart from "./components/BarChart";
+import Calculator from "./components/Calculator";
+import KlantenSidebar from "./components/KlantenSidebar";
+import MultiWindowButtons from "./components/MultiWindowButtons";
+
+const WEGINGEN_LS_KEY = "newton-wegingen";
+
+function laadWegingenUitLS() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(WEGINGEN_LS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+  return [];
+}
+
+function bewaarWegingenInLS(wegingen) {
+  if (typeof window === "undefined") return;
+  try { localStorage.setItem(WEGINGEN_LS_KEY, JSON.stringify(wegingen)); } catch (e) {}
+}
 
 export default function App() {
-  const [gebruiker, setGebruiker]     = useState(null);
-  const [pagina, setPagina]           = useState("dashboard");
-  const [wegingen, setWegingen]       = useState([]);
-  const [prijzen, setPrijzen]         = useState(INIT_PRIJZEN);
+  const [gebruiker, setGebruiker] = useState(null);
+  const [pagina, setPagina] = useState("dashboard");
+  const [wegingen, setWegingen] = useState(() => laadWegingenUitLS());
+  const [prijzen, setPrijzen] = useState(INIT_PRIJZEN);
   const [tempPrijzen, setTempPrijzen] = useState(INIT_PRIJZEN);
-  const [toast, setToast]             = useState(null);
-  const [lastUpdate, setLastUpdate]   = useState(new Date());
-  const [rapTab, setRapTab]           = useState("kg");
+  const [toast, setToast] = useState(null);
+  const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [rapTab, setRapTab] = useState("kg");
   const [gewichtWeegbrug, setGewichtWeegbrug] = useState(null);
-  const [gewichtLoods, setGewichtLoods]       = useState(null);
+  const [gewichtLoods, setGewichtLoods] = useState(null);
   const [serverVerbonden, setServerVerbonden] = useState(false);
-  const [serverIP, setServerIP]               = useState("localhost");
-  const [simulatieModus, setSimulatieModus]   = useState(false);
+  const [serverIP, setServerIP] = useState("localhost");
+  const [simulatieModus, setSimulatieModus] = useState(false);
 
   // KLANTEN — centrale state
   const [klanten, setKlanten] = useState(() => getInitKlanten());
@@ -55,13 +75,22 @@ export default function App() {
           const data = JSON.parse(e.data);
           setLastUpdate(new Date());
           if (data.type === "init") {
-            if (data.wegingen) setWegingen(data.wegingen);
+            if (data.wegingen) {
+              setWegingen(data.wegingen);
+              bewaarWegingenInLS(data.wegingen);
+            }
             if (data.weegbrug !== null && data.weegbrug !== undefined) setGewichtWeegbrug(data.weegbrug);
-            if (data.loods !== null && data.loods !== undefined)        setGewichtLoods(data.loods);
+            if (data.loods !== null && data.loods !== undefined) setGewichtLoods(data.loods);
           }
           if (data.type === "gewicht_weegbrug") setGewichtWeegbrug(data.gewicht);
-          if (data.type === "gewicht_loods")     setGewichtLoods(data.gewicht);
-          if (data.type === "nieuwe_weging")     setWegingen(prev => [data.weging, ...prev].slice(0, 200));
+          if (data.type === "gewicht_loods") setGewichtLoods(data.gewicht);
+          if (data.type === "nieuwe_weging") {
+            setWegingen(prev => {
+              const updated = [data.weging, ...prev].slice(0, 200);
+              bewaarWegingenInLS(updated);
+              return updated;
+            });
+          }
         } catch (e) {}
       };
       ws.onclose = () => { setServerVerbonden(false); setTimeout(() => gebruiker && verbindServer(ip), 5000); };
@@ -71,8 +100,32 @@ export default function App() {
     return () => { if (wsRef.current) wsRef.current.close(); };
   }, [gebruiker, serverIP]);
 
+  // Bewaar wegingen in localStorage bij elke wijziging
+  useEffect(() => {
+    bewaarWegingenInLS(wegingen);
+  }, [wegingen]);
+
+  // Sync wegingen van andere vensters/tabbladen
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (e) => {
+      if (e.key === WEGINGEN_LS_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) setWegingen(parsed);
+        } catch (err) {}
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
   function activeerSimulatie() {
-    if (wegingen.length === 0) setWegingen(initWegingen());
+    if (wegingen.length === 0) {
+      const initData = initWegingen();
+      setWegingen(initData);
+      bewaarWegingenInLS(initData);
+    }
     setSimulatieModus(true);
     let gew = 0; let richting = 1;
     const sim = setInterval(() => {
@@ -91,24 +144,32 @@ export default function App() {
       weging.id = Date.now();
       weging.bron = "lokaal";
       weging.isNieuw = true;
-      setWegingen(prev => [weging, ...prev].slice(0, 200));
+      setWegingen(prev => {
+        const updated = [weging, ...prev].slice(0, 200);
+        bewaarWegingenInLS(updated);
+        return updated;
+      });
       setTimeout(() => setWegingen(prev => prev.map(w => w.id === weging.id ? { ...w, isNieuw: false } : w)), 2000);
     }
     setLastUpdate(new Date());
   }
 
   function toonToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2500); }
-  function slaOp()        { setPrijzen({ ...tempPrijzen }); toonToast("Prijzen opgeslagen ✓"); }
+  function slaOp() { setPrijzen({ ...tempPrijzen }); toonToast("Prijzen opgeslagen ✓"); }
   function importeerWegingen(nieuwe) {
-    setWegingen(prev => [...nieuwe, ...prev].slice(0, 200));
+    setWegingen(prev => {
+      const updated = [...nieuwe, ...prev].slice(0, 200);
+      bewaarWegingenInLS(updated);
+      return updated;
+    });
     setLastUpdate(new Date());
     toonToast(`${nieuwe.length} weging(en) ingeladen ✓`);
   }
 
-  const totaalKg    = wegingen.reduce((s, w) => s + w.gewicht, 0);
+  const totaalKg = wegingen.reduce((s, w) => s + w.gewicht, 0);
   const totaalOmzet = wegingen.reduce((s, w) => s + w.gewicht * parseFloat(prijzen[w.materiaal.id] || 0), 0);
-  const vandaag     = wegingen.filter(w => w.datum === new Date().toLocaleDateString("nl-NL"));
-  const kanPrijzen  = gebruiker && (gebruiker.rol === "Admin" || gebruiker.rol === "Prijzen");
+  const vandaag = wegingen.filter(w => w.datum === new Date().toLocaleDateString("nl-NL"));
+  const kanPrijzen = gebruiker && (gebruiker.rol === "Admin" || gebruiker.rol === "Prijzen");
 
   if (!gebruiker) return <LoginScherm onLogin={setGebruiker} />;
   if (gebruiker.rol === "Chauffeur") return (
@@ -126,23 +187,23 @@ export default function App() {
   );
 
   const navItems = [
-    { key: "dashboard",  icon: "🟢", label: "Dashboard"  },
+    { key: "dashboard", icon: "🟢", label: "Dashboard" },
     { key: "calculator", icon: "🧮", label: "Calculator" },
-    { key: "wegen",      icon: "✓",  label: "Wegen"      },
-    { key: "bon",        icon: "📄", label: "Bon maken"  },
-    { key: "wegingen",   icon: "☰",  label: "Overzicht"  },
+    { key: "wegen", icon: "✓", label: "Wegen" },
+    { key: "bon", icon: "📄", label: "Bon maken" },
+    { key: "wegingen", icon: "☰", label: "Overzicht" },
     ...(kanPrijzen ? [{ key: "prijzen", icon: "€", label: "Prijzen" }] : []),
-    { key: "rapport",    icon: "📊", label: "Rapport"    },
-    { key: "import",     icon: "📥", label: "XML Import" },
+    { key: "rapport", icon: "📊", label: "Rapport" },
+    { key: "import", icon: "📥", label: "XML Import" },
   ];
 
   const titels = {
-    dashboard:  "Dashboard",
+    dashboard: "Dashboard",
     calculator: "Calculator",
-    wegingen:   "Wegingen",
-    prijzen:    "Prijsbeheer",
-    rapport:    "Rapportage",
-    import:     "XML Import"
+    wegingen: "Wegingen",
+    prijzen: "Prijsbeheer",
+    rapport: "Rapportage",
+    import: "XML Import"
   };
 
   return (
@@ -188,6 +249,7 @@ export default function App() {
             <div className="page-title">{titels[pagina]}</div>
             <div className="topbar-center">Metaalrecycling Bulters</div>
             <div className="topbar-right">
+              <MultiWindowButtons />
               <div className="status-pill">
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
                 {serverVerbonden ? "Live" : simulatieModus ? "Simulatie" : "Offline"}
@@ -343,7 +405,7 @@ export default function App() {
                     <tbody>
                       {MATERIALEN.map(m => {
                         const rijen = wegingen.filter(w => w.materiaal.id === m.id);
-                        const kg    = rijen.reduce((s, w) => s + w.gewicht, 0);
+                        const kg = rijen.reduce((s, w) => s + w.gewicht, 0);
                         const omzet = kg * parseFloat(prijzen[m.id] || 0);
                         return (
                           <tr key={m.id}>

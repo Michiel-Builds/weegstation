@@ -1,0 +1,33 @@
+/* Multi-Window layout */
+.mw-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg, #0f1011);
+  color: var(--text, #e6e8ea);
+  overflow: hidden;
+}
+.mw-content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* Multi-window knoppen in topbar */
+.btn-open-mw {
+  background: #212426;
+  color: #e8e4de;
+  border: 1px solid #2e3133;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: ui-monospace, "SF Mono", monospace;
+  margin-left: 6px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btn-open-mw:hover {
+  background: #2d3137;
+  border-color: #2e7d32;
+}

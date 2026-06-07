@@ -1,24 +1,23 @@
 {
   "name": "bulters-newton-app",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "type": "module",
   "description": "NewTon+ Metaalrecycling Bulters - voorraad- en weegsysteem voor metaalhandel",
   "author": "Michiel Bulters",
   "main": "electron.cjs",
   "scripts": {
     "dev": "vite",
+    "server": "node server/weegserver.cjs",
     "build": "vite build",
-    "preview": "vite preview",
-    "electron": "electron .",
-    "electron:dev": "vite & electron .",
-    "dist": "vite build && electron-builder"
+    "electron:dev": "electron ."
   },
   "dependencies": {
     "electron-log": "^5.4.4",
     "electron-updater": "^6.8.3",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "ws": "^8.18.0",
     "serialport": "^12.0.0"
   },
   "devDependencies": {
@@ -27,7 +26,8 @@
     "electron-builder": "^26.8.1",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5",
-    "vite": "^5.0.0"
+    "vite": "^5.0.0",
+    "ws": "^8.21.0"
   },
   "build": {
     "appId": "nl.bulters.newton",
@@ -37,7 +37,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico",
@@ -50,7 +52,10 @@
       "oneClick": false,
       "shortcutName": "NewTon+ Metaalrecycling",
       "createDesktopShortcut": true,
-      "installerLanguages": ["nl_NL", "en_US"],
+      "installerLanguages": [
+        "nl_NL",
+        "en_US"
+      ],
       "createStartMenuShortcut": true,
       "deleteAppDataOnUninstall": true,
       "allowToChangeInstallationDirectory": true,
@@ -60,7 +65,7 @@
       "private": true,
       "provider": "github",
       "releaseType": "release",
-      "owner": "michielvgvg",
+      "owner": "Michiel-Builds",
       "repo": "newton-plus"
     },
     "files": [
@@ -83,6 +88,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/michielvgvg/newton-plus.git"
+    "url": "git+https://github.com/michiel-builds/newton-plus.git"
   }
 }
