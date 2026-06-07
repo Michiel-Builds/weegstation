@@ -111,17 +111,18 @@ function createSplash() {
   });
   splashWindow.setResizable(false);
   splashWindow.center();
-  var splashPath;
-  if (process.resourcesPath) {
-    splashPath = path.join(process.resourcesPath, "splash.html");
-  } else {
-    splashPath = path.join(__dirname, "build", "splash.html");
-  }
   
-  // Check if splash file exists
-  if (!fs.existsSync(splashPath)) {
-    log.error("WAARSCHUWING: splash.html niet gevonden op:", splashPath);
-    // Continue without splash, don't crash
+  // Prioriteit: dev > bundled resources > fallback
+  const devPath = path.join(__dirname, "build", "splash.html");
+  const resourcesPath = process.resourcesPath ? path.join(process.resourcesPath, "splash.html") : null;
+  
+  let splashPath;
+  if (fs.existsSync(devPath)) {
+    splashPath = devPath;
+  } else if (resourcesPath && fs.existsSync(resourcesPath)) {
+    splashPath = resourcesPath;
+  } else {
+    log.warn("Splash screen overgeslagen - bestand niet gevonden");
     if (splashWindow && !splashWindow.isDestroyed()) {
       splashWindow.close();
       splashWindow = null;
