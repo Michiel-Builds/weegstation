@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./styles.css";
 
 import { MATERIALEN, INIT_PRIJZEN } from "./data/stamdata";
@@ -49,9 +49,7 @@ export default function App() {
   const [serverIP, setServerIP] = useState("localhost");
   const [simulatieModus, setSimulatieModus] = useState(false);
 
-  // KLANTEN — centrale state
   const [klanten, setKlanten] = useState(() => getInitKlanten());
-
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -100,12 +98,10 @@ export default function App() {
     return () => { if (wsRef.current) wsRef.current.close(); };
   }, [gebruiker, serverIP]);
 
-  // Bewaar wegingen in localStorage bij elke wijziging
   useEffect(() => {
     bewaarWegingenInLS(wegingen);
   }, [wegingen]);
 
-  // Sync wegingen van andere vensters/tabbladen
   useEffect(() => {
     if (typeof window === "undefined") return;
     const handler = (e) => {
@@ -312,8 +308,8 @@ export default function App() {
                     <table>
                       <thead><tr><th>Tijd</th><th>Kenteken</th><th>Materiaal</th><th>Gewicht</th><th>Waarde</th></tr></thead>
                       <tbody>
-                        {wegingen.slice(0, 8).map(w => (
-                          <tr key={w.id} className={w.isNieuw ? "new-row" : ""}>
+                        {wegingen.slice(0, 8).map((w, index) => (
+                          <tr key={w.id + "_" + index} className={w.isNieuw ? "new-row" : ""}>
                             <td className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>{w.tijd}</td>
                             <td className="mono" style={{ fontSize: 12 }}>{w.kenteken}</td>
                             <td><span className={`tag ${w.materiaal.tag}`}>{w.materiaal.naam}</span></td>
@@ -351,8 +347,8 @@ export default function App() {
                 <table>
                   <thead><tr><th>Datum</th><th>Tijd</th><th>Kenteken</th><th>Materiaal</th><th>Gewicht</th><th>Prijs/kg</th><th>Totaalwaarde</th><th>Bron</th></tr></thead>
                   <tbody>
-                    {wegingen.map(w => (
-                      <tr key={w.id} className={w.isNieuw ? "new-row" : ""}>
+                    {wegingen.map((w, index) => (
+                      <tr key={w.id + "_" + index} className={w.isNieuw ? "new-row" : ""}>
                         <td className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>{w.datum}</td>
                         <td className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>{w.tijd}</td>
                         <td className="mono" style={{ fontSize: 12 }}>{w.kenteken}</td>

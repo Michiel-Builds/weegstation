@@ -47,6 +47,7 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      devTools: true,
       preload: path.join(__dirname, "electron", "preload.js"),
     },
   };
@@ -58,6 +59,13 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
 
   win.loadFile(path.join(__dirname, "dist", "index.html"), { hash });
   win.once("ready-to-show", () => win.show());
+
+  // F12 om DevTools te openen
+  win.webContents.on("before-input-event", (event, input) => {
+    if (input.key === "F12") {
+      win.webContents.toggleDevTools();
+    }
+  });
 
   const slaOp = () => {
     if (win.isDestroyed()) return;
@@ -118,7 +126,6 @@ function openWegenVenster() {
   wegenWindow.on("closed", () => { wegenWindow = null; });
 }
 
-// IPC handlers
 ipcMain.handle("open-bon-venster", () => openBonVenster());
 ipcMain.handle("open-wegen-venster", () => openWegenVenster());
 ipcMain.handle("sluit-venster", (event) => {
