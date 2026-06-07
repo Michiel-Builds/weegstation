@@ -6,6 +6,20 @@ const log = require("electron-log");
 log.transports.file.level = "info";
 log.transports.console.level = "info";
 log.info("=== NewTon+ opgestart ===");
+log.info("App packaged:", app.isPackaged);
+log.info("App path:", app.getAppPath());
+log.info("__dirname:", __dirname);
+
+// Resources pad bepalen
+const getResourcesPath = () => {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "app.asar.unpacked");
+  }
+  return __dirname;
+};
+
+const RESOURCES_PATH = getResourcesPath();
+log.info("RESOURCES_PATH:", RESOURCES_PATH);
 
 let mainWindow = null;
 let bonWindow = null;
@@ -38,9 +52,9 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
   const p = posities[hash] || {};
 
   // Check if required files exist
-  const iconPath = path.join(__dirname, "build", "icon.ico");
-  const indexPath = path.join(__dirname, "dist", "index.html");
-  const preloadPath = path.join(__dirname, "preload.js");
+  const iconPath = path.join(RESOURCES_PATH, "build", "icon.ico");
+  const indexPath = path.join(RESOURCES_PATH, "dist", "index.html");
+  const preloadPath = path.join(RESOURCES_PATH, "preload.js");
 
   if (!fs.existsSync(indexPath)) {
     log.error("KRITIEKE FOUT: dist/index.html niet gevonden op:", indexPath);
@@ -76,8 +90,36 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
   const win = new BrowserWindow(opties);
   Menu.setApplicationMenu(null);
 
-  win.loadFile(indexPath, { hash });
-  win.once("ready-to-show", () => win.show());
+  log.info("  - index.html laden van:", indexPath);
+  win.loadFile(indexPath, { hash }).catch((err) => {
+    log.error("  ✗ loadFile error:", err);
+  });
+
+  win.webContents.on("did-finish-load", () => {
+    log.info("  ✓ did-finish-load");
+  });
+
+  win.webContents.on("did-fail-load", (e, code, desc) => {
+    log.error("  ✗ did-fail-load:", code, desc);
+  });
+
+  log.info("  - ready-to-show wachten...");
+  win.once("ready-to-show", () => {
+    log.info("  ✓ ready-to-show → window tonen");
+    win.show();
+    // Open DevTools in dev mode voor debugging
+    if (!app.isPackaged) {
+      log.info("  - DevTools openen (dev mode)");
+      win.webContents.openDevTools();
+    }
+  });
+
+  // Timeout check
+  setTimeout(() => {
+    if (!win.isDestroyed() && !win.isVisible()) {
+      log.warn("  ⚠ Window nog steeds niet zichtbaar na 3 seconden!");
+    }
+  }, 3000);
 
   // F12 om DevTools te openen
   win.webContents.on("before-input-event", (event, input) => {
@@ -106,14 +148,14 @@ function createSplash() {
     frame: false,
     alwaysOnTop: true,
     backgroundColor: "#0f1011",
-    icon: path.join(__dirname, "build", "icon.ico"),
+    icon: path.join(RESOURCES_PATH, "build", "icon.ico"),
     webPreferences: { nodeIntegration: false, contextIsolation: true }
   });
   splashWindow.setResizable(false);
   splashWindow.center();
   
-  // Prioriteit: dev > bundled resources > fallback
-  const devPath = path.join(__dirname, "build", "splash.html");
+  // Prioriteit: RESOURCES_PATH > process.resourcesPath
+  const devPath = path.join(RESOURCES_PATH, "build", "splash.html");
   const resourcesPath = process.resourcesPath ? path.join(process.resourcesPath, "splash.html") : null;
   
   let splashPath;
@@ -141,7 +183,9 @@ function createSplash() {
 }
 
 function createWindow() {
+  log.info("→ createWindow() gestart");
   mainWindow = maakVenster("", "NewTon+ | Metaalrecycling Bulters", 1400, 900);
+  log.info("← createWindow() klaar, mainWindow:", mainWindow ? "CREATED" : "NULL");
 }
 
 function openBonVenster() {
@@ -212,6 +256,14 @@ ipcMain.handle("sla-positie", (event, { vensterType, positie }) => {
   }
 });
 
+// Error handler van preload
+ipcMain.on("preload-error", (event, errorMsg) => {
+  log.error("✗ PRELOAD ERROR:", errorMsg);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    dialog.showErrorBox("Fout", "Er is een fout opgetreden:\n" + errorMsg);
+  }
+});
+
 const { autoUpdater } = require("electron-updater");
 
 autoUpdater.on("checking-for-update", function () { log.info("Controleren op updates..."); });
@@ -256,20 +308,29 @@ app.whenReady().then(function () {
     createSplash();
     setTimeout(function () {
       try {
+        log.info("→ Hoofdvenster aanmaken...");
         createWindow();
         if (!mainWindow) {
-          log.error("Venster aanmaking mislukt");
+          log.error("✗ Venster aanmaking mislukt - mainWindow is null");
           app.quit();
           return;
         }
+        log.info("✓ Hoofdvenster aangemaakt, wacht 2 seconden voor splash close...");
         setTimeout(function () {
-          if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
-        }, 800);
+          try {
+            if (splashWindow && !splashWindow.isDestroyed()) {
+              log.info("Splash screen sluiten");
+              splashWindow.close();
+            }
+          } catch (err) {
+            log.error("Fout bij splash sluiten:", err);
+          }
+        }, 2000);
       } catch (err) {
-        log.error("Fout bij venster aanmaking:", err);
+        log.error("✗ Fout bij venster aanmaking:", err);
         app.quit();
       }
-    }, 600);
+    }, 800);
     setTimeout(function () {
       autoUpdater.checkForUpdates().catch(function (err) { 
         log.error("Check updates mislukt:", err.message); 

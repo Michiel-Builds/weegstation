@@ -34,7 +34,9 @@
     "productName": "NewTon+",
     "copyright": "Copyright © 2026 Bulters Metaalrecycling",
     "asarUnpack": [
-      "dist/**/*"
+      "dist/**/*",
+      "preload.js",
+      "electron.cjs"
     ],
     "win": {
       "target": [
