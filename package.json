@@ -1,6 +1,6 @@
 {
   "name": "bulters-newton-app",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Bulters Weegsysteem - voorraad- en weegsysteem voor Metaalrecycling Bulters",
   "author": "Michiel Bulters",
   "main": "electron.cjs",
@@ -9,6 +9,7 @@
     "server": "node server/weegserver.cjs",
     "build": "vite build",
     "dist": "electron-builder",
+    "pak-weegserver": "node scripts/pak-weegserver.mjs",
     "electron:dev": "electron ."
   },
   "dependencies": {

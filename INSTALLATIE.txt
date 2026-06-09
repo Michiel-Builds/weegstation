@@ -16,11 +16,26 @@ ONTWIKKELING (optioneel)
    of: npm run electron:dev
 
 
-WEEGSERVER (weegbrug-PC)
-────────────────────────
-1. Start start-weegserver.bat (of: node server.cjs)
-2. Noteer het IP-adres dat in het venster verschijnt
-3. Op kantoor-PC: vul dat IP in bij Dashboard → server-IP
+WAT GEEF JE DE KLANT? (geen volledige broncode)
+──────────────────────────────────────────────
+• Kantoor-PC:  Bulters Weegsysteem-Setup-*.exe  (GitHub Release)
+• Weegbrug-PC: Bulters-Weegserver.zip           (lokaal bouwen, zie hieronder)
+
+
+WEEGSERVER-ZIP BOUWEN (jij, vóór levering)
+──────────────────────────────────────────
+  npm run pak-weegserver
+
+  Output: release/Bulters-Weegserver.zip
+  Bevat alleen server + LEESMIJ.txt — geen React/Electron/broncode.
+
+
+WEEGSERVER (weegbrug-PC — klant)
+────────────────────────────────
+1. Node.js LTS installeren (nodejs.org)
+2. Bulters-Weegserver.zip uitpakken naar C:\Bulters\Weegserver\
+3. Dubbelklik start-weegserver.bat
+4. IP noteren → invullen op kantoor-PC in de app
 
 
 INLOGGEN

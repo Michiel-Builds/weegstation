@@ -1,0 +1,11 @@
+{
+  "name": "bulters-weegserver",
+  "version": "2.0.2",
+  "private": true,
+  "description": "Weegserver voor Bulters Weegsysteem (weegbrug-PC)",
+  "dependencies": {
+    "@serialport/parser-readline": "^12.0.0",
+    "serialport": "^12.0.0",
+    "ws": "^8.21.0"
+  }
+}
