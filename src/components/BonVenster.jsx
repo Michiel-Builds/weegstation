@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import BonBouwer from "./BonBouwer";
 import { getInitKlanten } from "../data/klanten";
-import { INIT_PRIJZEN } from "../data/stamdata";
+import { APP_NAAM, BEDRIJF_NAAM, INIT_PRIJZEN, INIT_OPBRENGST } from "../data/stamdata";
+import {
+  getCachedPrijzenState, PRIJZEN_LS_KEY, OPBRENGST_LS_KEY, prijzenVanOpbrengst,
+} from "../utils/prijzen";
 
-const WEGINGEN_KEY = "newton-wegingen";
+import { WEGINGEN_LS_KEY as WEGINGEN_KEY, laadWegingenUitLS } from "../utils/wegingen";
 const KLANTEN_KEY   = "newton-klanten";
 
 function laadLS(key, fallback) {
@@ -15,10 +18,11 @@ function laadLS(key, fallback) {
 
 export default function BonVenster() {
   const [klanten,  setKlanten]  = useState(() => getInitKlanten());
-  const [wegingen, setWegingen] = useState(() => laadLS(WEGINGEN_KEY, []));
+  const [wegingen, setWegingen] = useState(() => laadWegingenUitLS());
+  const [prijzen,  setPrijzen]  = useState(() => getCachedPrijzenState(INIT_OPBRENGST, INIT_PRIJZEN).prijzen);
   const [toast,    setToast]    = useState(null);
 
-  useEffect(() => { document.title = "NewTon+ Bon-venster"; }, []);
+  useEffect(() => { document.title = `${APP_NAAM} — Bon-venster`; }, []);
 
   // Sync van andere vensters
   useEffect(() => {
@@ -28,6 +32,12 @@ export default function BonVenster() {
       }
       if (e.key === KLANTEN_KEY && e.newValue) {
         try { setKlanten(JSON.parse(e.newValue)); } catch (err) {}
+      }
+      if (e.key === PRIJZEN_LS_KEY && e.newValue) {
+        try { setPrijzen(JSON.parse(e.newValue)); } catch (err) {}
+      }
+      if (e.key === OPBRENGST_LS_KEY && e.newValue) {
+        try { setPrijzen(prijzenVanOpbrengst(JSON.parse(e.newValue))); } catch (err) {}
       }
     };
     window.addEventListener("storage", handler);
@@ -43,7 +53,7 @@ export default function BonVenster() {
     <div className="mw-layout">
       <div className="topbar">
         <div className="page-title">📄 Bon-venster</div>
-        <div className="topbar-center">Metaalrecycling Bulters</div>
+        <div className="topbar-center">{BEDRIJF_NAAM}</div>
         <div className="topbar-right">
           <span className="status-pill">
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
@@ -55,7 +65,7 @@ export default function BonVenster() {
       </div>
       <div className="mw-content">
         <BonBouwer
-          prijzen={INIT_PRIJZEN}
+          prijzen={prijzen}
           wegingen={wegingen}
           klanten={klanten}
         />

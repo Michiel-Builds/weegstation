@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { MATERIALEN } from "../data/stamdata";
 import KlantAutocomplete from "./KlantAutocomplete";
+import {
+  zorgVoorDagSnapshot, vandaagDatumKey,
+  getOpbrengstPrijsVoorDatum, laadOpbrengstDagSnapshots,
+} from "../utils/opbrengstDag";
 
 function fmt(n) { return Number(n).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtI(n) { return Number(n).toLocaleString("nl-NL", { maximumFractionDigits: 0 }); }
@@ -13,17 +17,25 @@ function maakBonnummerWeging(id) {
     "-" + String(id).padStart(3, "0");
 }
 
+function maakLegeKlant(id) {
+  return {
+    id, naam: "", materiaalId: "",
+    vol: null, leeg: null, netto: 0, weegTijd: null,
+    bevestigd: false, richting: "inkomend",
+  };
+}
+
+function richtingLabel(richting) {
+  return richting === "uitgaand" ? "Uitgaand" : "Inkomend";
+}
+
 export default function WeegPagina({
   gewichtWeegbrug, gewichtLoods,
-  serverVerbonden, simulatieModus,
-  onWeging, wegingen = [], prijzen = {}, klanten = [],
+  serverVerbonden,
+  onWeging, wegingen = [], prijzen = {}, opbrengst = {}, klanten = [],
 }) {
   const [klantenLijst, setKlantenLijst] = useState(() =>
-    Array.from({ length: 5 }, (_, i) => ({
-      id: i + 1, naam: "", materiaalId: "",
-      vol: null, leeg: null, netto: 0, weegTijd: null,
-      bevestigd: false
-    }))
+    Array.from({ length: 5 }, (_, i) => maakLegeKlant(i + 1))
   );
   const [actieveBron, setActieveBron] = useState("weegbrug");
   const [toast, setToast] = useState(null);
@@ -84,11 +96,7 @@ export default function WeegPagina({
 
   function voegKlantToe() {
     const nieuweId = idRef.current++;
-    setKlantenLijst(prev => [...prev, {
-      id: nieuweId, naam: "", materiaalId: "",
-      vol: null, leeg: null, netto: 0, weegTijd: null,
-      bevestigd: false
-    }]);
+    setKlantenLijst(prev => [...prev, maakLegeKlant(nieuweId)]);
     setTimeout(() => {
       const el = document.querySelector(`[data-klant-id="${nieuweId}"] [data-veld="naam"]`);
       if (el) el.focus();
@@ -102,11 +110,7 @@ export default function WeegPagina({
     if (klantenLijst.length === 0) return;
     if (!confirm("Alle klanten wissen?")) return;
     idRef.current = 6;
-    setKlantenLijst(Array.from({ length: 5 }, (_, i) => ({
-      id: i + 1, naam: "", materiaalId: "",
-      vol: null, leeg: null, netto: 0, weegTijd: null,
-      bevestigd: false
-    })));
+    setKlantenLijst(Array.from({ length: 5 }, (_, i) => maakLegeKlant(i + 1)));
   }
 
   // PER-KLANT BEVESTIGEN — stuurt vol, leeg, netto apart mee
@@ -121,6 +125,12 @@ export default function WeegPagina({
     const volGew  = parseFloat(k.vol);
     const leegGew = parseFloat(k.leeg);
     const netto   = berekenNetto(k);
+    const vandaag = vandaagDatumKey();
+    zorgVoorDagSnapshot(vandaag, opbrengst);
+    const snapshots = laadOpbrengstDagSnapshots();
+    const inkoopPrijs = parseFloat(prijzen[mat?.id] || 0);
+    const opbrengstPrijs = getOpbrengstPrijsVoorDatum(vandaag, mat?.id, snapshots)
+      ?? parseFloat(opbrengst[mat?.id] || 0);
     const weging = {
       id: Date.now() + k.id,
       bonnummer: maakBonnummerWeging(k.id),
@@ -133,11 +143,14 @@ export default function WeegPagina({
       leeg: leegGew,          // leeg-gewicht
       netto: netto,           // netto expliciet
       aftrek: 0,              // geen aftrek in weging-scherm
-      prijs: parseFloat(prijzen[mat?.id] || 0),
-      totaal: netto * parseFloat(prijzen[mat?.id] || 0),
+      prijs: inkoopPrijs,
+      totaal: Math.round(netto * inkoopPrijs * 100) / 100,
+      opbrengstPrijs,
+      opbrengstOmzet: Math.round(netto * opbrengstPrijs * 100) / 100,
       tijd: k.weegTijd || new Date().toLocaleTimeString("nl-NL"),
       datum: new Date().toLocaleDateString("nl-NL"),
       bron: actieveBron,
+      richting: k.richting || "inkomend",
       isNieuw: true,
     };
     if (onWeging) onWeging(weging);
@@ -201,6 +214,7 @@ body { font-family: "Segoe UI", -apple-system, sans-serif; margin: 0; color: #00
 <div class="sectie"><div class="sectie-titel">Klantgegevens</div>
 <div class="rij"><span class="l">Naam</span><span class="r">${k.naam}</span></div>
 <div class="rij"><span class="l">Materiaal</span><span class="r">${mat ? mat.naam : "—"}</span></div>
+<div class="rij"><span class="l">Richting</span><span class="r">${richtingLabel(k.richting)}</span></div>
 </div>
 <div class="sectie"><div class="sectie-titel">Weging</div>
 <div class="rij"><span class="l">Vol gewicht</span><span class="r">${fmtI(parseFloat(k.vol))} kg</span></div>
@@ -209,7 +223,7 @@ body { font-family: "Segoe UI", -apple-system, sans-serif; margin: 0; color: #00
 </div>
 <div class="netto-blok"><div class="netto-label">Netto gewicht</div><div class="netto-waarde">${fmtI(netto)} kg</div></div>
 <div class="handtekening"><div class="handtekening-label">Voor akkoord:</div><div class="handtekening-lijn"></div></div>
-<div class="footer">NewTon+ Metaalrecycling Bulters · Bon ${bonnummer}<br>Deze bon dient als bewijs van weging</div>
+<div class="footer">Bulters Weegsysteem · Metaalrecycling Bulters · Bon ${bonnummer}<br>Deze bon dient als bewijs van weging</div>
 </div>
 </body></html>
 `);
@@ -235,7 +249,7 @@ body { font-family: "Segoe UI", -apple-system, sans-serif; margin: 0; color: #00
           <span className="weegbrug-eenheid-mk">kg</span>
         </div>
         <div className="weegbrug-status-mk">
-          {simulatieModus ? "Simulatie actief" : serverVerbonden ? "Live verbonden" : "Geen verbinding"}
+          {serverVerbonden ? "Live verbonden" : "Geen verbinding"}
         </div>
         <div className="weegbrug-controls-mk">
           <button className={"bron-btn-mk" + (actieveBron === "weegbrug" ? " actief" : "")} onClick={() => setActieveBron("weegbrug")}>🚛 Weegbrug</button>
@@ -266,6 +280,19 @@ body { font-family: "Segoe UI", -apple-system, sans-serif; margin: 0; color: #00
                     <button className="print-btn-mk" onClick={() => printWeging(k.id)} disabled={!kanPrinten}>🖨 Print</button>
                     <button className="verwijder-btn-mk" onClick={() => verwijderKlant(k.id)} title="Verwijder klant">🗑</button>
                   </div>
+                </div>
+
+                <div className="klant-richting-mk">
+                  <button
+                    type="button"
+                    className={"richting-btn-mk" + (k.richting === "inkomend" ? " actief" : "")}
+                    onClick={() => updateKlant(k.id, "richting", "inkomend")}
+                  >↓ Inkomend</button>
+                  <button
+                    type="button"
+                    className={"richting-btn-mk uitgaand" + (k.richting === "uitgaand" ? " actief" : "")}
+                    onClick={() => updateKlant(k.id, "richting", "uitgaand")}
+                  >↑ Uitgaand</button>
                 </div>
 
                 <div className="klant-top-mk">

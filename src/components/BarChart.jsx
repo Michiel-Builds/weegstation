@@ -1,37 +1,27 @@
-import { MATERIALEN } from "../data/stamdata";
-
-export default function BarChart({ wegingen, prijzen, periode }) {
-  const totals = {};
-  MATERIALEN.forEach(m => {
-    totals[m.id] = { kg: 0, omzet: 0, naam: m.naam, kleur: m.kleur };
-  });
-  wegingen.forEach(w => {
-    if (!totals[w.materiaal.id]) return;
-    totals[w.materiaal.id].kg    += w.gewicht;
-    totals[w.materiaal.id].omzet += w.gewicht * parseFloat(prijzen[w.materiaal.id] || 0);
-  });
-  const items    = Object.values(totals);
-  const maxKg    = Math.max(...items.map(i => i.kg), 1);
-  const maxOmzet = Math.max(...items.map(i => i.omzet), 1);
+export default function BarChart({ items, periode }) {
+  const waarden = items.map(i => (periode === "omzet" ? i.omzet : i.kg));
+  const max = Math.max(...waarden.map(v => Math.abs(v)), 1);
 
   return (
     <div className="bar-chart">
       {items.map(item => {
         const val = periode === "omzet" ? item.omzet : item.kg;
-        const max = periode === "omzet" ? maxOmzet : maxKg;
-        const pct = Math.round((val / max) * 100);
+        if (val === 0) return null;
+        const pct = Math.round((Math.abs(val) / max) * 100);
+        const isNeg = val < 0;
         const label = periode === "omzet"
-          ? `€ ${item.omzet.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}`
-          : `${item.kg.toLocaleString("nl-NL")} kg`;
+          ? `${isNeg ? "−" : ""}€ ${Math.abs(val).toLocaleString("nl-NL", { maximumFractionDigits: 0 })}`
+          : `${isNeg ? "−" : ""}${Math.abs(val).toLocaleString("nl-NL")} kg`;
+        const kleur = isNeg ? "var(--red)" : item.kleur;
         return (
           <div key={item.naam} className="bar-row">
             <span className="bar-label">{item.naam}</span>
             <div className="bar-track">
-              <div className="bar-fill" style={{ width: `${pct}%`, background: item.kleur }}>
+              <div className="bar-fill" style={{ width: `${pct}%`, background: kleur }}>
                 {pct > 20 ? label : ""}
               </div>
             </div>
-            <span className="bar-val">{pct <= 20 ? label : ""}</span>
+            <span className="bar-val" style={{ color: isNeg ? "var(--red)" : undefined }}>{pct <= 20 ? label : ""}</span>
           </div>
         );
       })}

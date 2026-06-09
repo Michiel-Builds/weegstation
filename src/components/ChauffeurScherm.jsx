@@ -3,7 +3,7 @@ import { MATERIALEN } from "../data/stamdata";
 
 export default function ChauffeurScherm({
   gebruiker, onLogout, onWeging,
-  gewichtWeegbrug, gewichtLoods, simulatieModus,
+  gewichtWeegbrug, gewichtLoods, serverVerbonden = false,
 }) {
   const [kenteken, setKenteken]         = useState("");
   const [materiaal, setMateriaal]       = useState(null);
@@ -112,7 +112,7 @@ export default function ChauffeurScherm({
                 </div>
                 {gewicht !== null && (
                   <div className="gewicht-status">
-                    {simulatieModus ? "⚠ Simulatiemodus" : "✓ Live gewicht ontvangen"}
+                    {serverVerbonden ? "✓ Live gewicht ontvangen" : "⚠ Geen serververbinding"}
                   </div>
                 )}
               </div>

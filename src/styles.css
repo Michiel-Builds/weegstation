@@ -109,7 +109,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--sans); }
 .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--mono); margin-bottom: 10px; }
 .kpi-value { font-size: 28px; font-weight: 700; font-family: var(--mono); color: var(--text); line-height: 1; }
 .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 6px; }
-.two-col { display: grid; grid-template-columns: 1fr 340px; gap: 20px; margin-bottom: 20px; }
+.two-col { display: grid; grid-template-columns: 1fr minmax(520px, 48%); gap: 20px; margin-bottom: 20px; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
 .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
 .panel-title { font-size: 14px; font-weight: 600; }
@@ -122,11 +122,19 @@ tbody tr:last-child { border-bottom: none; }
 td { padding: 12px 16px; font-size: 13px; }
 .mono { font-family: var(--mono); }
 .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: var(--mono); }
-.tag-koper     { background: #1a2e1a; color: #4caf7d; border: 1px solid #2a4a2a; }
-.tag-aluminium { background: #1a1e2e; color: #7ab4f5; border: 1px solid #2a2e4a; }
-.tag-staal     { background: #2a2520; color: #c49a6c; border: 1px solid #3a3020; }
-.tag-messing   { background: #2e2a1a; color: #d4b84a; border: 1px solid #4a3e1a; }
-.tag-rvs       { background: #1e2a2a; color: #4acfcf; border: 1px solid #1e4040; }
+.tag-koper          { background: #1a2e1a; color: #4caf7d; border: 1px solid #2a4a2a; }
+.tag-aluminium      { background: #1a1e2e; color: #7ab4f5; border: 1px solid #2a2e4a; }
+.tag-staal          { background: #2a2520; color: #c49a6c; border: 1px solid #3a3020; }
+.tag-messing        { background: #2e2a1a; color: #d4b84a; border: 1px solid #4a3e1a; }
+.tag-rvs            { background: #1e2a2a; color: #4acfcf; border: 1px solid #1e4040; }
+.tag-zink           { background: #1e2428; color: #9eafc4; border: 1px solid #2a3440; }
+.tag-lood           { background: #1a2228; color: #6b7c8a; border: 1px solid #2a3440; }
+.tag-brons          { background: #2a2018; color: #b87333; border: 1px solid #4a3020; }
+.tag-gietijzer      { background: #1a1a1a; color: #8a8a8a; border: 1px solid #2e2e2e; }
+.tag-kabel          { background: #2a1e14; color: #e67e22; border: 1px solid #4a3018; }
+.tag-accus          { background: #1a2a1a; color: #66bb6a; border: 1px solid #2a4a2a; }
+.tag-elektronica    { background: #241a2a; color: #b07cc6; border: 1px solid #3a2a4a; }
+.tag-tin            { background: #1e2428; color: #a8b8c8; border: 1px solid #2a3840; }
 .new-row { animation: fadeIn 0.6s ease; }
 @keyframes fadeIn { from { background: rgba(46,125,50,0.15); } to { background: transparent; } }
 .price-list { padding: 12px; }
@@ -138,9 +146,40 @@ td { padding: 12px 16px; font-size: 13px; }
 .price-input { background: var(--surface); border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 13px; padding: 5px 8px; border-radius: 5px; width: 80px; text-align: right; outline: none; }
 .price-input:focus { border-color: var(--accent2); }
 .price-unit { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.prijzen-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 960px; }
+.prijzen-hint { padding: 0 16px; margin: 0; font-size: 12px; color: var(--muted); }
+.price-item-berekend { opacity: 0.92; }
+.dashboard-prijzen-enkel { max-width: 960px; }
+.dashboard-prijzen-kolommen { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-width: 0; }
+.dashboard-prijzen-kolommen .price-list { padding: 8px 10px; }
+.dashboard-prijzen-kolommen .price-item { gap: 10px; padding: 8px 10px; }
+.dashboard-prijzen-kolommen .price-item-left { flex: 1; min-width: 0; overflow: hidden; }
+.dashboard-prijzen-kolommen .price-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-prijzen-kolommen .price-waarde { display: flex; align-items: center; gap: 4px; flex-shrink: 0; white-space: nowrap; }
+.prijzen-kolom-titel { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 12px 4px; }
+@media (max-width: 800px) {
+  .prijzen-grid, .dashboard-prijzen-kolommen { grid-template-columns: 1fr; }
+}
 .save-btn { background: var(--accent); color: #fff; border: none; cursor: pointer; padding: 6px 14px; border-radius: 5px; font-size: 12px; font-weight: 700; transition: opacity 0.15s; font-family: var(--sans); }
 .save-btn:hover { opacity: 0.85; }
-.rapport-tabs { display: flex; gap: 8px; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.rapport-tabs { display: flex; gap: 8px; padding: 16px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.rapport-hint { padding: 0 20px; margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+.rapport-tabel-wrap { padding: 0 20px 20px; overflow-x: auto; }
+.rapport-tabel { margin-top: 8px; min-width: 720px; }
+.rapport-test-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 12px 16px; margin-bottom: 16px; border-radius: 8px;
+  background: rgba(212, 184, 74, 0.12); border: 1px solid rgba(212, 184, 74, 0.35);
+  font-size: 13px; color: var(--text);
+}
+.rapport-test-toggle { margin-bottom: 12px; }
+.rapport-test-btn {
+  padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); font-size: 12px; cursor: pointer;
+}
+.rapport-test-btn:hover { border-color: var(--accent); }
+.rapport-test-btn.primair { background: var(--accent); color: #fff; border-color: var(--accent); }
+.rapport-leeg { padding: 24px 20px; color: var(--muted); font-size: 13px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .rtab { padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: none; color: var(--muted); font-family: var(--sans); transition: all 0.15s; }
 .rtab.active { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
 .rtab:hover:not(.active) { background: var(--surface2); color: var(--text); }
@@ -183,7 +222,6 @@ td { padding: 12px 16px; font-size: 13px; }
 .server-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .server-dot.verbonden { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
 .server-dot.verbroken { background: var(--red); }
-.server-dot.simulatie { background: #d4b84a; }
 .server-ip-input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 12px; padding: 3px 8px; border-radius: 4px; outline: none; width: 140px; margin-left: auto; }
 .server-ip-input:focus { border-color: var(--accent2); }
 .weeg-pagina { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
@@ -401,6 +439,23 @@ body table input[type="number"] {
   display: flex; justify-content: space-between;
   align-items: center; margin-bottom: 12px;
 }
+.klant-richting-mk { display: flex; gap: 8px; margin-bottom: 12px; }
+.richting-btn-mk {
+  flex: 1; padding: 8px 12px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted); cursor: pointer;
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+}
+.richting-btn-mk.actief {
+  border-color: var(--accent2); color: var(--accent2);
+  background: rgba(46,125,50,0.1);
+}
+.richting-btn-mk.uitgaand.actief {
+  border-color: var(--red); color: var(--red);
+  background: rgba(224,82,82,0.12);
+}
+.richting-uitgaand { color: var(--red); }
+.richting-inkomend { color: var(--accent2); }
 .klant-nr-mk {
   font-size: 12px; color: var(--muted);
   font-family: var(--mono);
@@ -705,6 +760,165 @@ body table input[type="number"] {
   background: rgba(46,125,50,0.12);
 }
 
+/* === FORMULIEREN === */
+.formulieren-wrap {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.formulieren-klanten-panel { position: sticky; top: 0; }
+.form-klanten-body { padding: 14px 16px; }
+.form-klanten-zoek {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--sans); font-size: 13px;
+  padding: 8px 10px; border-radius: 6px; outline: none; margin-bottom: 8px;
+}
+.form-klanten-zoek:focus { border-color: var(--accent2); }
+.form-klanten-hint {
+  font-size: 11px; color: var(--muted); line-height: 1.4; margin-bottom: 10px;
+}
+.form-klanten-lijst {
+  max-height: 420px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: 8px;
+  margin-bottom: 12px;
+}
+.form-klanten-leeg {
+  padding: 16px; font-size: 12px; color: var(--muted); font-style: italic; text-align: center;
+}
+.form-klant-regel {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 8px 10px; border-bottom: 1px solid var(--border);
+  transition: background 0.1s;
+}
+.form-klant-regel:last-child { border-bottom: none; }
+.form-klant-regel.geselecteerd { background: rgba(46,125,50,0.1); }
+.form-klant-check {
+  display: flex; align-items: center; gap: 8px; flex: 1; min-width: 140px;
+  cursor: pointer; font-size: 12px;
+}
+.form-klant-check input { accent-color: var(--accent); }
+.form-klant-naam { font-weight: 600; }
+.form-klant-plaats { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.form-klant-rol {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  font-size: 11px; padding: 4px 6px; border-radius: 4px;
+}
+.form-klant-snel { display: flex; gap: 3px; }
+.form-klant-snel-btn {
+  width: 22px; height: 22px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--surface2);
+  color: var(--muted); font-size: 10px; font-weight: 700;
+  cursor: pointer; font-family: var(--mono);
+}
+.form-klant-snel-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.form-toepassen-btn { width: 100%; }
+
+.form-header-acties { display: flex; gap: 8px; align-items: center; }
+.form-sec-btn {
+  background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+  padding: 6px 12px; border-radius: 5px; font-size: 12px; cursor: pointer;
+  font-family: var(--sans); transition: background 0.15s;
+}
+.form-sec-btn:hover { background: var(--border); }
+
+.form-inhoud { padding: 16px 20px 20px; }
+.form-algemeen { margin-bottom: 20px; }
+.form-sectie-kop {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--accent2); font-family: var(--mono);
+  margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.form-partijen-sectie { margin-bottom: 20px; }
+.form-partij-blok {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 12px 14px; margin-bottom: 10px;
+}
+.form-partij-titel {
+  font-size: 11px; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: var(--mono); margin-bottom: 10px;
+}
+.form-veld-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.form-veld-grid-compact { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.form-veld-breed { grid-column: 1 / -1; }
+.form-veld label {
+  display: block; font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: var(--mono); margin-bottom: 4px;
+}
+.form-veld input,
+.form-veld select,
+.form-textarea {
+  width: 100%; background: var(--bg); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--sans); font-size: 13px;
+  padding: 8px 10px; border-radius: 6px; outline: none;
+}
+.form-veld input:focus,
+.form-textarea:focus { border-color: var(--accent2); }
+.form-textarea { resize: vertical; min-height: 60px; }
+.form-transport-sectie { margin-bottom: 16px; }
+.form-preview-hint {
+  font-size: 11px; color: var(--muted); font-style: italic;
+  padding: 10px 12px; background: var(--surface2);
+  border-radius: 6px; border-left: 3px solid var(--accent);
+}
+.form-kalibratie-panel {
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+  background: rgba(46,125,50,0.06);
+}
+.form-kalibratie-titel {
+  font-size: 11px; font-weight: 700; color: var(--accent2);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: var(--mono); margin-bottom: 10px;
+}
+.form-kalibratie-acties { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.form-kalibratie-hint {
+  font-size: 11px; color: var(--muted); margin-top: 10px; line-height: 1.45;
+}
+.form-veld-check label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text); text-transform: none;
+  font-family: var(--sans); padding-top: 18px;
+}
+.form-veld-check input { width: auto; accent-color: var(--accent); }
+
+.form-voorbeeld-wrap {
+  margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.form-voorbeeld-titel {
+  font-size: 11px; font-weight: 700; color: var(--accent2);
+  text-transform: uppercase; letter-spacing: 0.06em;
+  font-family: var(--mono); margin-bottom: 10px;
+}
+.form-voorbeeld-scaler { margin-bottom: -120px; }
+.form-voorbeeld-pagina {
+  position: relative; background: #fff;
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+.form-voorbeeld-pdf {
+  position: absolute; left: 0; top: 0;
+  width: 100%; height: 100%; border: none; pointer-events: none;
+}
+.form-voorbeeld-overlay {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 2;
+}
+.form-voorbeeld-overlay .veld {
+  position: absolute;
+  font-family: "Courier New", Courier, monospace;
+  color: #000; white-space: pre-wrap; line-height: 1.12;
+  overflow: hidden; pointer-events: none;
+}
+.form-voorbeeld-hint {
+  font-size: 11px; color: var(--muted); margin-top: 130px; line-height: 1.4;
+}
+
 /* === FIX: klikbaarheid === */
 .klanten-sidebar-kl input,
 .klanten-sidebar-kl select,
@@ -712,7 +926,7 @@ body table input[type="number"] {
 .klanten-modal-kl input,
 .klanten-modal-kl select,
 .klanten-modal-kl button,
-.klant-autocomplete-dropdown-kl {
+.klant-autocomplete-dropdown-kl,
+.materiaal-autocomplete-dropdown {
   pointer-events: auto !important;
-  position: relative;
 }

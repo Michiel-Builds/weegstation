@@ -1,5 +1,5 @@
 ════════════════════════════════════════════════════════
-   METAALRECYCLING BULTERS — NewTon+ INSTALLATIE (VITE)
+   METAALRECYCLING BULTERS — BULTERS WEEGSYSTEEM INSTALLATIE
 ════════════════════════════════════════════════════════
 
 EENMALIGE INSTALLATIE
@@ -31,9 +31,7 @@ En dan http://localhost:3000 openen.
 
 INLOGGEN
 ─────────
-  admin      / bulters2024   → Volledige toegang
-  kantoor    / kantoor123    → Wegen + bon + prijzen
-  chauffeur  / weegbrug      → Alleen weegscherm
+  admin / bulters2024 → Volledige toegang
 
 
 ════════════════════════════════════════════════════════

@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import WeegPagina from "./WeegPagina";
 import { getInitKlanten } from "../data/klanten";
-import { INIT_PRIJZEN } from "../data/stamdata";
+import { APP_NAAM, BEDRIJF_NAAM, INIT_PRIJZEN, INIT_OPBRENGST } from "../data/stamdata";
+import { laadPrijzenState } from "../utils/prijzen";
+import { laadServerIP, magWeegserverVerbinden } from "../utils/weegserver";
 
-const WEGINGEN_KEY = "newton-wegingen";
+import { WEGINGEN_LS_KEY as WEGINGEN_KEY, laadWegingenUitLS } from "../utils/wegingen";
 const KLANTEN_KEY   = "newton-klanten";
 
 function laadLS(key, fallback) {
@@ -13,27 +15,52 @@ function laadLS(key, fallback) {
   } catch (e) { return fallback; }
 }
 
+const initPrijzen = laadPrijzenState(INIT_OPBRENGST, INIT_PRIJZEN);
+
 export default function WegenVenster() {
-  const [klanten,  setKlanten]  = useState(() => getInitKlanten());
-  const [wegingen, setWegingen] = useState(() => laadLS(WEGINGEN_KEY, []));
+  const [klanten, setKlanten] = useState(() => getInitKlanten());
+  const [wegingen, setWegingen] = useState(() => laadWegingenUitLS());
+  const [gewichtWeegbrug, setGewichtWeegbrug] = useState(null);
+  const [gewichtLoods, setGewichtLoods] = useState(null);
+  const [serverVerbonden, setServerVerbonden] = useState(false);
+  const wsRef = useRef(null);
 
-  // Simpele live-gewichts-simulatie (geen echte weegbrug in dit venster)
-  const [huidigGewicht, setHuidigGewicht] = useState(null);
-
-  useEffect(() => { document.title = "NewTon+ Wegen-venster"; }, []);
+  useEffect(() => { document.title = `${APP_NAAM} — Wegen-venster`; }, []);
 
   useEffect(() => {
-    let g = 0, dir = 1;
-    const t = setInterval(() => {
-      g += dir * (Math.random() * 100 + 20);
-      if (g > 8000) dir = -1;
-      if (g < 0) { g = 0; dir = 1; }
-      setHuidigGewicht(Math.round(g / 20) * 20);
-    }, 800);
-    return () => clearInterval(t);
+    if (!magWeegserverVerbinden()) return;
+    const ip = laadServerIP();
+    function verbind() {
+      let ws;
+      try {
+        ws = new WebSocket(`ws://${ip}:3000`);
+      } catch (e) {
+        setServerVerbonden(false);
+        return;
+      }
+      wsRef.current = ws;
+      ws.onopen = () => setServerVerbonden(true);
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === "init") {
+            if (data.weegbrug !== null && data.weegbrug !== undefined) setGewichtWeegbrug(data.weegbrug);
+            if (data.loods !== null && data.loods !== undefined) setGewichtLoods(data.loods);
+          }
+          if (data.type === "gewicht_weegbrug") setGewichtWeegbrug(data.gewicht);
+          if (data.type === "gewicht_loods") setGewichtLoods(data.gewicht);
+        } catch (err) {}
+      };
+      ws.onclose = () => {
+        setServerVerbonden(false);
+        setTimeout(verbind, 5000);
+      };
+      ws.onerror = () => setServerVerbonden(false);
+    }
+    verbind();
+    return () => { if (wsRef.current) wsRef.current.close(); };
   }, []);
 
-  // Sync van andere vensters
   useEffect(() => {
     const handler = (e) => {
       if (e.key === WEGINGEN_KEY && e.newValue) {
@@ -48,9 +75,16 @@ export default function WegenVenster() {
   }, []);
 
   function verstuurWeging(weging) {
-    const updated = [weging, ...wegingen].slice(0, 200);
-    setWegingen(updated);
-    try { localStorage.setItem(WEGINGEN_KEY, JSON.stringify(updated)); } catch (e) {}
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "registreer_weging", weging }));
+    } else {
+      weging.id = Date.now();
+      weging.bron = "lokaal";
+      weging.isNieuw = true;
+      const updated = [weging, ...wegingen].slice(0, 200);
+      setWegingen(updated);
+      try { localStorage.setItem(WEGINGEN_KEY, JSON.stringify(updated)); } catch (e) {}
+    }
   }
 
   function sluitVenster() {
@@ -62,11 +96,11 @@ export default function WegenVenster() {
     <div className="mw-layout">
       <div className="topbar">
         <div className="page-title">⚖ Wegen-venster</div>
-        <div className="topbar-center">Metaalrecycling Bulters</div>
+        <div className="topbar-center">{BEDRIJF_NAAM}</div>
         <div className="topbar-right">
           <span className="status-pill">
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
-            Standalone
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: serverVerbonden ? "var(--green)" : "var(--red)", display: "inline-block" }} />
+            {serverVerbonden ? "Live" : "Offline"}
           </span>
           <span className="last-update">{wegingen.length} wegingen</span>
           <button className="btn-open-mw" onClick={sluitVenster}>✕ Sluiten</button>
@@ -74,13 +108,13 @@ export default function WegenVenster() {
       </div>
       <div className="mw-content">
         <WeegPagina
-          gewichtWeegbrug={huidigGewicht}
-          gewichtLoods={null}
-          serverVerbonden={true}
-          simulatieModus={true}
+          gewichtWeegbrug={gewichtWeegbrug}
+          gewichtLoods={gewichtLoods}
+          serverVerbonden={serverVerbonden}
           onWeging={verstuurWeging}
           wegingen={wegingen}
-          prijzen={INIT_PRIJZEN}
+          prijzen={initPrijzen.prijzen}
+          opbrengst={initPrijzen.opbrengst}
           klanten={klanten}
         />
       </div>

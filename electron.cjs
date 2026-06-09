@@ -5,7 +5,7 @@ const log = require("electron-log");
 
 log.transports.file.level = "info";
 log.transports.console.level = "info";
-log.info("=== NewTon+ opgestart ===");
+log.info("=== Bulters Weegsysteem opgestart ===");
 log.info("App packaged:", app.isPackaged);
 log.info("App path:", app.getAppPath());
 log.info("__dirname:", __dirname);
@@ -184,7 +184,7 @@ function createSplash() {
 
 function createWindow() {
   log.info("→ createWindow() gestart");
-  mainWindow = maakVenster("", "NewTon+ | Metaalrecycling Bulters", 1400, 900);
+  mainWindow = maakVenster("", "Bulters Weegsysteem | Metaalrecycling Bulters", 1400, 900);
   log.info("← createWindow() klaar, mainWindow:", mainWindow ? "CREATED" : "NULL");
 }
 
@@ -194,7 +194,7 @@ function openBonVenster() {
     bonWindow.focus();
     return;
   }
-  bonWindow = maakVenster("bon", "NewTon+ Bon-venster", 1100, 850);
+  bonWindow = maakVenster("bon", "Bulters Weegsysteem — Bon-venster", 1100, 850);
   bonWindow.on("closed", () => { bonWindow = null; });
 }
 
@@ -204,7 +204,7 @@ function openWegenVenster() {
     wegenWindow.focus();
     return;
   }
-  wegenWindow = maakVenster("wegen", "NewTon+ Wegen-venster", 1000, 850);
+  wegenWindow = maakVenster("wegen", "Bulters Weegsysteem — Wegen-venster", 1000, 850);
   wegenWindow.on("closed", () => { wegenWindow = null; });
 }
 
@@ -273,7 +273,7 @@ autoUpdater.on("update-available", function (info) {
     dialog.showMessageBox(mainWindow, {
       type: "info",
       title: "Update beschikbaar",
-      message: "NewTon+ versie " + info.version + " is beschikbaar.",
+      message: "Bulters Weegsysteem versie " + info.version + " is beschikbaar.",
       detail: "De update wordt nu gedownload.",
       buttons: ["OK"]
     });
@@ -338,7 +338,7 @@ app.whenReady().then(function () {
     }, 5000);
   } catch (err) {
     log.error("KRITIEKE FOUT bij app startup:", err);
-    dialog.showErrorBox("Startup Fout", "NewTon+ kon niet starten:\n" + err.message);
+    dialog.showErrorBox("Startup Fout", "Bulters Weegsysteem kon niet starten:\n" + err.message);
     app.quit();
   }
 }).catch(function (err) {
@@ -362,7 +362,7 @@ process.on("uncaughtException", function (err) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     dialog.showErrorBox(
       "Kritieke Fout",
-      "NewTon+ is gecrashd:\n" + err.message + "\n\nZie log bestanden voor details."
+      "Bulters Weegsysteem is gecrashd:\n" + err.message + "\n\nZie log bestanden voor details."
     );
   }
   app.quit();
@@ -376,5 +376,5 @@ process.on("unhandledRejection", function (reason, promise) {
 });
 
 app.on("before-quit", function () {
-  log.info("=== NewTon+ wordt afgesloten ===");
+  log.info("=== Bulters Weegsysteem wordt afgesloten ===");
 });

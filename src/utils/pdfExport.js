@@ -167,7 +167,7 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
   doc.setFontSize(8);
   doc.setTextColor(150);
   doc.text(
-    "NewTon+ Metaalrecycling Bulters · Bon " + bonnummer + " · " + new Date().toLocaleString("nl-NL"),
+    "Bulters Weegsysteem · Metaalrecycling Bulters · Bon " + bonnummer + " · " + new Date().toLocaleString("nl-NL"),
     pageW / 2,
     pageH - 8,
     { align: "center" }

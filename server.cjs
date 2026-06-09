@@ -1,5 +1,5 @@
 /**
- * Metaalrecycling Bulters - Lokale Weegbrug Server
+ * Bulters Weegsysteem - Lokale Weegbrug Server
  * Draait op de pc bij de weegbrug (Windows 7+)
  * Leest gewicht van Bilanciai via RS-232 (COM-poort)
  * Stuurt live gewicht door naar de app via WebSocket
@@ -7,7 +7,7 @@
 
 const http       = require('http');
 const WebSocket  = require('ws');
-const SerialPort = require('serialport');
+const { SerialPort } = require('serialport');
 const fs         = require('fs');
 const path       = require('path');
 const os         = require('os');
@@ -15,21 +15,19 @@ const os         = require('os');
 // --- Configuratie
 const CONFIG = {
   HTTP_PORT: 3000,
-  WEEGBRUG_COM:  process.env.WEEGBRUG_COM || 'COM1',
-  WEEGBRUG_BAUD: 9600,
-  LOODS_COM:     process.env.LOODS_COM    || 'COM2',
-  LOODS_BAUD:    9600,
+  WEEGBRUG_COM:       process.env.WEEGBRUG_COM || 'COM5',
+  WEEGBRUG_BAUD:      4800,
+  WEEGBRUG_DATA_BITS: 7,
+  WEEGBRUG_STOP_BITS: 1,
+  WEEGBRUG_PARITY:    'even',
+  LOODS_COM:          process.env.LOODS_COM || 'COM2',
+  LOODS_BAUD:         9600,
+  LOODS_DATA_BITS:    8,
+  LOODS_STOP_BITS:    1,
+  LOODS_PARITY:       'none',
   NEWTON_XML_MAP: process.env.NEWTON_XML_MAP || 'C:\\NewTon\\XMLExport\\',
   API_KEY:        process.env.WEEGSERVER_KEY || 'bulters-2024',
 };
-
-// --- ReadlineParser detectie (serialport v12+ heeft named export)
-let ReadlineParser = null;
-if (SerialPort.ReadlineParser) {
-  ReadlineParser = SerialPort.ReadlineParser;
-} else if (SerialPort.parsers && SerialPort.parsers.Readline) {
-  ReadlineParser = SerialPort.parsers.Readline;
-}
 
 // --- State
 let huidigGewichtWeegbrug = null;
@@ -40,6 +38,22 @@ let verbondenClients      = new Set();
 function log(msg) {
   const tijd = new Date().toLocaleTimeString('nl-NL');
   console.log('[' + tijd + '] ' + msg);
+}
+
+function serielePoortOpties(com, { baud, dataBits, stopBits, parity }) {
+  return { path: com, baudRate: baud, dataBits, stopBits, parity };
+}
+
+function serieleFormaat({ baud, dataBits, stopBits, parity }) {
+  const p = { none: 'N', even: 'E', odd: 'O', mark: 'M', space: 'S' }[parity] || '?';
+  return baud + ' ' + dataBits + p + stopBits;
+}
+
+let ReadlineParser = null;
+try {
+  ReadlineParser = require('@serialport/parser-readline').ReadlineParser;
+} catch (e) {
+  console.error('ReadlineParser niet beschikbaar:', e.message);
 }
 
 function getLocalIP() {
@@ -146,12 +160,12 @@ function startWeegbrugSerieel() {
     return;
   }
   try {
-    const port = new SerialPort(CONFIG.WEEGBRUG_COM, {
-      baudRate: CONFIG.WEEGBRUG_BAUD,
-      dataBits: 8,
-      stopBits: 1,
-      parity:   'none',
-    });
+    const port = new SerialPort(serielePoortOpties(CONFIG.WEEGBRUG_COM, {
+      baud: CONFIG.WEEGBRUG_BAUD,
+      dataBits: CONFIG.WEEGBRUG_DATA_BITS,
+      stopBits: CONFIG.WEEGBRUG_STOP_BITS,
+      parity: CONFIG.WEEGBRUG_PARITY,
+    }));
 
     const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
@@ -163,7 +177,14 @@ function startWeegbrugSerieel() {
       }
     });
 
-    port.on('open',  () => log('Weegbrug verbonden op ' + CONFIG.WEEGBRUG_COM));
+    port.on('open', () => log(
+      'Weegbrug verbonden op ' + CONFIG.WEEGBRUG_COM + ' (' + serieleFormaat({
+        baud: CONFIG.WEEGBRUG_BAUD,
+        dataBits: CONFIG.WEEGBRUG_DATA_BITS,
+        stopBits: CONFIG.WEEGBRUG_STOP_BITS,
+        parity: CONFIG.WEEGBRUG_PARITY,
+      }) + ')'
+    ));
     port.on('error', (err) => {
       log('Weegbrug COM fout: ' + err.message + ' - simuleren');
       simuleerWeegbrug();
@@ -186,12 +207,12 @@ function startLoodsWeegsSchaalSerieel() {
     return;
   }
   try {
-    const port = new SerialPort(CONFIG.LOODS_COM, {
-      baudRate: CONFIG.LOODS_BAUD,
-      dataBits: 8,
-      stopBits: 1,
-      parity:   'none',
-    });
+    const port = new SerialPort(serielePoortOpties(CONFIG.LOODS_COM, {
+      baud: CONFIG.LOODS_BAUD,
+      dataBits: CONFIG.LOODS_DATA_BITS,
+      stopBits: CONFIG.LOODS_STOP_BITS,
+      parity: CONFIG.LOODS_PARITY,
+    }));
 
     const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
@@ -268,7 +289,7 @@ function startXMLWatcher() {
 
 // --- Start alles op
 httpServer.listen(CONFIG.HTTP_PORT, () => {
-  log('=== Metaalrecycling Bulters - Weegserver v1.0 ===');
+  log('=== Bulters Weegsysteem - Weegserver v1.0 ===');
   log('Server gestart op poort ' + CONFIG.HTTP_PORT);
   log('Lokaal IP: ' + getLocalIP() + ':' + CONFIG.HTTP_PORT);
   startWeegbrugSerieel();

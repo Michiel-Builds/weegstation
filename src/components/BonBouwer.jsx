@@ -1,7 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { maakBonnummer, printBon as printBonUtil } from "../utils/helpers";
 import { exporteerBonNaarPdf } from "../utils/pdfExport";
+import { registreerBonOmzet } from "../utils/bonOmzet";
+import { MATERIALEN } from "../data/stamdata";
 import KlantAutocomplete from "./KlantAutocomplete";
+import MateriaalAutocomplete from "./MateriaalAutocomplete";
 
 const AANTAL_RIJEN = 15;
 const STORAGE_KEY = "newton-bonnen";
@@ -99,6 +102,16 @@ function bewaarBonnen(bonnen, actieveId) {
   } catch (e) {}
 }
 
+function vindMateriaalOpNaam(naam) {
+  if (!naam?.trim()) return null;
+  const q = naam.trim().toLowerCase();
+  const exact = MATERIALEN.find(m => m.naam.toLowerCase() === q);
+  if (exact) return exact;
+  const starts = MATERIALEN.filter(m => m.naam.toLowerCase().startsWith(q));
+  if (starts.length === 1) return starts[0];
+  return null;
+}
+
 function laadBonnen() {
   if (typeof window === "undefined") return null;
   try {
@@ -142,6 +155,30 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
     }
     bewaarBonnen(bonnen, actieveBonId);
   }, [bonnen, actieveBonId, isGeladen]);
+
+  // Sync inkoopprijzen naar regels met bekend materiaal (particulier)
+  useEffect(() => {
+    if (!isGeladen) return;
+    setBonnen(prev => {
+      let gewijzigd = false;
+      const next = prev.map(bon => {
+        if (bon.klantType !== "particulier") return bon;
+        let bonGewijzigd = false;
+        const regels = bon.regels.map(r => {
+          if (!r.materiaal.trim()) return r;
+          const mat = vindMateriaalOpNaam(r.materiaal);
+          if (!mat || prijzen[mat.id] === undefined) return r;
+          const nieuw = String(prijzen[mat.id]);
+          if (r.prijs === nieuw) return r;
+          bonGewijzigd = true;
+          gewijzigd = true;
+          return { ...r, prijs: nieuw };
+        });
+        return bonGewijzigd ? { ...bon, regels } : bon;
+      });
+      return gewijzigd ? next : prev;
+    });
+  }, [prijzen, isGeladen]);
 
   // Sync van andere tabbladen
   useEffect(() => {
@@ -253,7 +290,19 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
     }
     updateActieveBon(prev => ({
       ...prev,
-      regels: prev.regels.map((r, i) => i === index ? { ...r, [veld]: waarde } : r)
+      regels: prev.regels.map((r, i) => {
+        if (i !== index) return r;
+        const updated = { ...r, [veld]: waarde };
+        if (veld === "materiaal" && prev.klantType === "particulier") {
+          const mat = vindMateriaalOpNaam(waarde);
+          if (mat && prijzen[mat.id] !== undefined) {
+            updated.prijs = String(prijzen[mat.id]);
+          } else if (!waarde.trim()) {
+            updated.prijs = "";
+          }
+        }
+        return updated;
+      })
     }));
   }
 
@@ -382,6 +431,19 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
         materiaal: { naam: r.materiaal }, kenteken: "–", totaal: r.totaal, prijs: r.prijs,
       })),
       totaalKg, totaalEuro
+    });
+    registreerBonOmzet({
+      bonnummer: actieveBon.bonnummer,
+      totaalEuro,
+      totaalKg,
+      klant: actieveBon.klant,
+      klantType: actieveBon.klantType,
+      regels: regels.map(r => ({
+        materiaal: r.materiaal,
+        kg: r.totaal,
+        subtotaal: r.subtotaal,
+        prijs: r.prijs,
+      })),
     });
     toonToast("💾 PDF: " + bestandsnaam);
     setTimeout(() => sluitActieveBonEnGaNaarVolgende(), 800);
@@ -533,7 +595,12 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
               )}
             </div>
 
-            <div style={{ padding: 14, background: "var(--surface2)", borderRadius: 9, border: "1px solid var(--border)" }}>
+            <div style={{ padding: 14, background: "var(--surface2)", borderRadius: 9, border: "1px solid var(--border)", overflow: "visible" }}>
+              {!isBedrijf && (
+                <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)", marginBottom: 8 }}>
+                  Particulier: kies een metaalsoort — €/kg (inkoop) wordt automatisch ingevuld vanuit Prijzen
+                </div>
+              )}
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr>
@@ -553,9 +620,30 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
                     const sub    = rijSubtotaal(r);
                     return (
                       <tr key={i} style={{ opacity: actief ? 1 : 0.55 }}>
-                        <td style={td()}>
-                          <input style={inputStyle(false)} placeholder="bijv. Koper"
-                            value={r.materiaal} onChange={e => updateRij(i, "materiaal", e.target.value)} />
+                        <td style={{ ...td(), position: "relative" }}>
+                          {isBedrijf ? (
+                            <input
+                              style={inputStyle(false)}
+                              placeholder="bijv. Koper"
+                              value={r.materiaal}
+                              onChange={e => updateRij(i, "materiaal", e.target.value)}
+                            />
+                          ) : (
+                            <MateriaalAutocomplete
+                              value={r.materiaal}
+                              onChange={v => updateRij(i, "materiaal", v)}
+                              onSelect={m => {
+                                updateActieveBon(prev => ({
+                                  ...prev,
+                                  regels: prev.regels.map((regel, ri) => ri !== i ? regel : {
+                                    ...regel,
+                                    materiaal: m.naam,
+                                    prijs: prijzen[m.id] !== undefined ? String(prijzen[m.id]) : regel.prijs,
+                                  }),
+                                }));
+                              }}
+                            />
+                          )}
                         </td>
                         <td style={td(true)}>
                           <input style={inputStyle(true)} type="text" inputMode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="0"
@@ -651,6 +739,11 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
                       <span style={{ color: "var(--muted)", fontWeight: 400 }}>·</span>
                       <span style={{ fontFamily: "var(--mono)" }}>{w.kenteken || "–"}</span>
                     </div>
+                    {w.richting && (
+                      <div className={w.richting === "uitgaand" ? "richting-uitgaand" : "richting-inkomend"} style={{ fontSize: 10, fontFamily: "var(--mono)", marginTop: 2 }}>
+                        {w.richting === "uitgaand" ? "↑ Uitgaand" : "↓ Inkomend"}
+                      </div>
+                    )}
                     {w.klantNaam && (
                       <div style={{
                         fontSize: 12, color: "var(--accent2)", marginTop: 2, fontFamily: "var(--sans)",

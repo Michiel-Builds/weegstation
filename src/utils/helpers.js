@@ -1,7 +1,23 @@
-// ===== Bon-nummer =====
-export function maakBonnummer() {
+// ===== Bon-nummer (dagelijkse teller, begint elke dag op 1) =====
+const BON_TELLER_KEY = "newton-bon-teller";
+
+function bonDatumKey() {
   const d = new Date();
-  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(Math.floor(Math.random() * 999) + 1).padStart(3, "0")}`;
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function maakBonnummer() {
+  const datum = bonDatumKey();
+  let teller = 1;
+  try {
+    const raw = localStorage.getItem(BON_TELLER_KEY);
+    const opgeslagen = raw ? JSON.parse(raw) : null;
+    if (opgeslagen?.datum === datum) {
+      teller = (opgeslagen.teller || 0) + 1;
+    }
+    localStorage.setItem(BON_TELLER_KEY, JSON.stringify({ datum, teller }));
+  } catch {}
+  return `${datum}-${String(teller).padStart(3, "0")}`;
 }
 
 // ===== XML Parser voor NewTon+ import =====

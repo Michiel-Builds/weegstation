@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { GEBRUIKERS } from "../data/stamdata";
+import { APP_NAAM, BEDRIJF_NAAM, GEBRUIKERS } from "../data/stamdata";
 
 export default function LoginScherm({ onLogin }) {
-  const [user, setUser] = useState("");
+  const [user, setUser] = useState("admin");
   const [pass, setPass] = useState("");
   const [fout, setFout] = useState("");
 
@@ -17,9 +17,8 @@ export default function LoginScherm({ onLogin }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <div className="login-logo-label">Weegsysteem</div>
-        <div className="login-logo-name">NewTon+</div>
-        <div className="login-bedrijf">Metaalrecycling Bulters</div>
+        <div className="login-logo-name">{APP_NAAM}</div>
+        <div className="login-bedrijf">{BEDRIJF_NAAM}</div>
         <div className="login-divider" />
         {fout && <div className="login-err">{fout}</div>}
         <label className="login-label">Gebruikersnaam</label>
@@ -41,11 +40,6 @@ export default function LoginScherm({ onLogin }) {
           placeholder="••••••••"
         />
         <button className="login-btn" onClick={probeerLogin}>Inloggen →</button>
-        <div className="login-hint">
-          Demo logins:<br />
-          admin / bulters2024 &nbsp;·&nbsp; kantoor / kantoor123<br />
-          chauffeur / weegbrug
-        </div>
       </div>
     </div>
   );

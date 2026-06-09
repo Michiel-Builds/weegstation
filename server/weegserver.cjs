@@ -1,10 +1,10 @@
-// Dummy weegserver voor NewTon+
+// Dummy weegserver voor Bulters Weegsysteem
 // Draait op ws://localhost:3000
 
 const WebSocket = require("ws");
 const wss = new WebSocket.Server({ port: 3000, host: "0.0.0.0" });
 
-console.log("🌐 NewTon+ weegserver gestart op ws://localhost:3000");
+console.log("🌐 Bulters Weegsysteem weegserver gestart op ws://localhost:3000");
 
 const MATERIAAL = [
   { id: 1, naam: "Koper",     kleur: "#4caf7d", tag: "tag-kop" },

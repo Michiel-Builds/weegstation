@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./styles.css";
 
-import { MATERIALEN, INIT_PRIJZEN } from "./data/stamdata";
-import { initWegingen } from "./utils/helpers";
+import { APP_NAAM, BEDRIJF_NAAM, MATERIALEN, INIT_PRIJZEN, INIT_OPBRENGST, OPBRENGST_KORTING } from "./data/stamdata";
+import {
+  getCachedPrijzenState, bewaarPrijzenInLS, bewaarOpbrengstInLS,
+  inkoopVanOpbrengst, prijzenVanOpbrengst,
+} from "./utils/prijzen";
+import { vastlegOpbrengstVoorDag, zorgVoorDagSnapshot, vandaagDatumKey } from "./utils/opbrengstDag";
+import {
+  laadBonOmzet, BON_OMZET_LS_KEY, berekenTotaleOmzet, berekenOmzetVandaag,
+} from "./utils/bonOmzet";
 import { getInitKlanten, getZakelijk, getParticulier } from "./data/klanten";
 
 import LoginScherm from "./components/LoginScherm";
@@ -10,78 +17,61 @@ import ChauffeurScherm from "./components/ChauffeurScherm";
 import WeegPagina from "./components/WeegPagina";
 import XMLImport from "./components/XMLImport";
 import BonBouwer from "./components/BonBouwer";
-import BarChart from "./components/BarChart";
+import RapportPagina from "./components/RapportPagina";
 import Calculator from "./components/Calculator";
 import KlantenSidebar from "./components/KlantenSidebar";
 import MultiWindowButtons from "./components/MultiWindowButtons";
+import FormulierenPagina from "./components/FormulierenPagina";
+import { laadServerIP, bewaarServerIP, magWeegserverVerbinden } from "./utils/weegserver";
 
-const WEGINGEN_LS_KEY = "newton-wegingen";
-
-function laadWegingenUitLS() {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(WEGINGEN_LS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (e) {}
-  return [];
-}
-
-function bewaarWegingenInLS(wegingen) {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(WEGINGEN_LS_KEY, JSON.stringify(wegingen)); } catch (e) {}
-}
+import { WEGINGEN_LS_KEY, laadWegingenUitLS, bewaarWegingenInLS } from "./utils/wegingen";
 
 export default function App() {
   const [gebruiker, setGebruiker] = useState(null);
   const [pagina, setPagina] = useState("dashboard");
   const [wegingen, setWegingen] = useState(() => laadWegingenUitLS());
-  const [prijzen, setPrijzen] = useState(INIT_PRIJZEN);
-  const [tempPrijzen, setTempPrijzen] = useState(INIT_PRIJZEN);
+  const [bonOmzet, setBonOmzet] = useState(() => laadBonOmzet());
+  const [opbrengst, setOpbrengst] = useState(() => getCachedPrijzenState(INIT_OPBRENGST, INIT_PRIJZEN).opbrengst);
+  const [prijzen, setPrijzen] = useState(() => getCachedPrijzenState(INIT_OPBRENGST, INIT_PRIJZEN).prijzen);
+  const [tempOpbrengst, setTempOpbrengst] = useState(() => getCachedPrijzenState(INIT_OPBRENGST, INIT_PRIJZEN).opbrengst);
+  const [tempPrijzen, setTempPrijzen] = useState(() => getCachedPrijzenState(INIT_OPBRENGST, INIT_PRIJZEN).prijzen);
   const [toast, setToast] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(new Date());
-  const [rapTab, setRapTab] = useState("kg");
   const [gewichtWeegbrug, setGewichtWeegbrug] = useState(null);
   const [gewichtLoods, setGewichtLoods] = useState(null);
   const [serverVerbonden, setServerVerbonden] = useState(false);
-  const [serverIP, setServerIP] = useState("localhost");
-  const [simulatieModus, setSimulatieModus] = useState(false);
-
+  const [serverIP, setServerIP] = useState(() => laadServerIP());
   const [klanten, setKlanten] = useState(() => getInitKlanten());
   const wsRef = useRef(null);
 
   useEffect(() => {
-    document.title = "NewTon+ v1.1.1 | Metaalrecycling Bulters";
+    document.title = `${APP_NAAM} | ${BEDRIJF_NAAM}`;
+  }, []);
+
+  useEffect(() => {
+    zorgVoorDagSnapshot(vandaagDatumKey(), opbrengst);
   }, []);
 
   useEffect(() => {
     if (!gebruiker) return;
-    const isLokaal = typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-       window.location.hostname === "127.0.0.1" ||
-       /^192\.168\./.test(window.location.hostname));
-    if (!isLokaal) { 
-      console.warn("WAARSCHUWING: App draait niet lokaal. Server-verbinding uitgeschakeld."); 
-      activeerSimulatie(); 
-      return; 
+    if (!magWeegserverVerbinden()) {
+      console.warn("WAARSCHUWING: App draait niet in lokaal netwerk. Server-verbinding uitgeschakeld.");
+      return;
     }
     function verbindServer(ip) {
       let ws;
-      try { 
-        ws = new WebSocket(`ws://${ip}:3000`); 
-      } catch (e) { 
+      try {
+        ws = new WebSocket(`ws://${ip}:3000`);
+      } catch (e) {
         console.error("WebSocket constructie fout:", e);
-        activeerSimulatie(); 
-        return; 
+        setServerVerbonden(false);
+        return;
       }
       wsRef.current = ws;
-      ws.onopen = () => { 
+      ws.onopen = () => {
         console.log("✓ Server verbonden op ws://" + ip + ":3000");
-        setServerVerbonden(true); 
-        setSimulatieModus(false); 
-        toonToast("✓ Live verbonden"); 
+        setServerVerbonden(true);
+        toonToast("✓ Live verbonden");
       };
       ws.onmessage = (e) => {
         try {
@@ -113,11 +103,10 @@ export default function App() {
         setServerVerbonden(false); 
         setTimeout(() => gebruiker && verbindServer(ip), 5000); 
       };
-      ws.onerror = (err) => { 
+      ws.onerror = (err) => {
         console.error("WebSocket fout:", err);
-        setServerVerbonden(false); 
-        activeerSimulatie(); 
-        toonToast("⚠ Server niet bereikbaar - Simulatie modus"); 
+        setServerVerbonden(false);
+        toonToast("⚠ Server niet bereikbaar");
       };
     }
     verbindServer(serverIP);
@@ -129,7 +118,12 @@ export default function App() {
   }, [wegingen]);
 
   useEffect(() => {
+    bewaarServerIP(serverIP);
+  }, [serverIP]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
+    const verversBonOmzet = () => setBonOmzet(laadBonOmzet());
     const handler = (e) => {
       if (e.key === WEGINGEN_LS_KEY && e.newValue) {
         try {
@@ -137,28 +131,15 @@ export default function App() {
           if (Array.isArray(parsed)) setWegingen(parsed);
         } catch (err) {}
       }
+      if (e.key === BON_OMZET_LS_KEY) verversBonOmzet();
     };
     window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
+    window.addEventListener("newton-bon-omzet-update", verversBonOmzet);
+    return () => {
+      window.removeEventListener("storage", handler);
+      window.removeEventListener("newton-bon-omzet-update", verversBonOmzet);
+    };
   }, []);
-
-  function activeerSimulatie() {
-    console.warn("⚠ SIMULATIE MODUS GEACTIVEERD - Gewichten zijn demo data!");
-    if (wegingen.length === 0) {
-      const initData = initWegingen();
-      setWegingen(initData);
-      bewaarWegingenInLS(initData);
-    }
-    setSimulatieModus(true);
-    let gew = 0; let richting = 1;
-    const sim = setInterval(() => {
-      if (!gebruiker) { clearInterval(sim); return; }
-      gew += richting * (Math.random() * 150 + 30);
-      if (gew > 10000) richting = -1;
-      if (gew < 0) { gew = 0; richting = 1; }
-      setGewichtWeegbrug(Math.round(gew / 20) * 20);
-    }, 600);
-  }
 
   function verstuurWeging(weging) {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -178,7 +159,22 @@ export default function App() {
   }
 
   function toonToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2500); }
-  function slaOp() { setPrijzen({ ...tempPrijzen }); toonToast("Prijzen opgeslagen ✓"); }
+  function wijzigOpbrengst(materiaalId, waarde) {
+    setTempOpbrengst(p => ({ ...p, [materiaalId]: waarde }));
+    setTempPrijzen(p => ({ ...p, [materiaalId]: inkoopVanOpbrengst(waarde) }));
+  }
+
+  function slaOp() {
+    const nieuweOpbrengst = { ...tempOpbrengst };
+    const nieuwePrijzen = prijzenVanOpbrengst(nieuweOpbrengst);
+    setOpbrengst(nieuweOpbrengst);
+    setPrijzen(nieuwePrijzen);
+    setTempPrijzen(nieuwePrijzen);
+    bewaarOpbrengstInLS(nieuweOpbrengst);
+    bewaarPrijzenInLS(nieuwePrijzen);
+    vastlegOpbrengstVoorDag(vandaagDatumKey(), nieuweOpbrengst);
+    toonToast("Prijzen opgeslagen ✓");
+  }
   function importeerWegingen(nieuwe) {
     setWegingen(prev => {
       const updated = [...nieuwe, ...prev].slice(0, 200);
@@ -190,7 +186,8 @@ export default function App() {
   }
 
   const totaalKg = wegingen.reduce((s, w) => s + w.gewicht, 0);
-  const totaalOmzet = wegingen.reduce((s, w) => s + w.gewicht * parseFloat(prijzen[w.materiaal.id] || 0), 0);
+  const totaalOmzet = berekenTotaleOmzet(bonOmzet);
+  const omzetVandaag = berekenOmzetVandaag(bonOmzet);
   const vandaag = wegingen.filter(w => w.datum === new Date().toLocaleDateString("nl-NL"));
   const kanPrijzen = gebruiker && (gebruiker.rol === "Admin" || gebruiker.rol === "Prijzen");
 
@@ -202,7 +199,7 @@ export default function App() {
         onLogout={() => setGebruiker(null)}
         gewichtWeegbrug={gewichtWeegbrug}
         gewichtLoods={gewichtLoods}
-        simulatieModus={simulatieModus}
+        serverVerbonden={serverVerbonden}
         onWeging={verstuurWeging}
       />
       {toast && <div className="toast">{toast}</div>}
@@ -218,6 +215,7 @@ export default function App() {
     ...(kanPrijzen ? [{ key: "prijzen", icon: "€", label: "Prijzen" }] : []),
     { key: "rapport", icon: "📊", label: "Rapport" },
     { key: "import", icon: "📥", label: "XML Import" },
+    { key: "formulieren", icon: "📋", label: "Formulieren" },
   ];
 
   const titels = {
@@ -226,7 +224,8 @@ export default function App() {
     wegingen: "Wegingen",
     prijzen: "Prijsbeheer",
     rapport: "Rapportage",
-    import: "XML Import"
+    import: "XML Import",
+    formulieren: "Formulieren"
   };
 
   return (
@@ -234,8 +233,8 @@ export default function App() {
       <div className="app">
         <aside className="sidebar">
           <div className="sidebar-logo">
-            <div className="logo-label">Metaalrecycling Bulters</div>
-            <div className="logo-name">NewTon+</div>
+            <div className="logo-label">{BEDRIJF_NAAM}</div>
+            <div className="logo-name">{APP_NAAM}</div>
           </div>
           <nav className="nav">
             {navItems.map(item => (
@@ -270,12 +269,12 @@ export default function App() {
         <main className="main">
           <div className="topbar">
             <div className="page-title">{titels[pagina]}</div>
-            <div className="topbar-center">Metaalrecycling Bulters</div>
+            <div className="topbar-center">{BEDRIJF_NAAM}</div>
             <div className="topbar-right">
               <MultiWindowButtons />
               <div className="status-pill">
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
-                {serverVerbonden ? "Live" : simulatieModus ? "Simulatie" : "Offline"}
+                {serverVerbonden ? "Live" : "Offline"}
               </div>
               <span className="last-update">Bijgewerkt: {lastUpdate.toLocaleTimeString("nl-NL")}</span>
             </div>
@@ -284,9 +283,9 @@ export default function App() {
             {pagina === "dashboard" && (
               <>
                 <div className="server-balk">
-                  <div className={`server-dot ${serverVerbonden ? "verbonden" : simulatieModus ? "simulatie" : "verbroken"}`} />
-                  <span style={{ color: serverVerbonden ? "var(--green)" : simulatieModus ? "#d4b84a" : "var(--red)" }}>
-                    {serverVerbonden ? "Live verbonden met weegserver" : simulatieModus ? "Simulatiemodus (server niet bereikbaar)" : "Verbinding verbroken — herverbinden..."}
+                  <div className={`server-dot ${serverVerbonden ? "verbonden" : "verbroken"}`} />
+                  <span style={{ color: serverVerbonden ? "var(--green)" : "var(--red)" }}>
+                    {serverVerbonden ? "Live verbonden met weegserver" : "Verbinding verbroken — herverbinden..."}
                   </span>
                   {!serverVerbonden && (
                     <input
@@ -326,42 +325,75 @@ export default function App() {
                 <div className="kpi-row">
                   <div className="kpi-card"><div className="kpi-label">Wegingen vandaag</div><div className="kpi-value">{vandaag.length}</div><div className="kpi-sub">vrachten geregistreerd</div></div>
                   <div className="kpi-card"><div className="kpi-label">Totaal gewicht</div><div className="kpi-value">{(totaalKg / 1000).toFixed(1)}<span style={{ fontSize: 16, color: "var(--muted)" }}>t</span></div><div className="kpi-sub">alle wegingen</div></div>
-                  <div className="kpi-card"><div className="kpi-label">Totale omzet</div><div className="kpi-value" style={{ fontSize: 22 }}>€ {totaalOmzet.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}</div><div className="kpi-sub">op basis van prijzen</div></div>
+                  <div className="kpi-card"><div className="kpi-label">Totale omzet</div><div className="kpi-value" style={{ fontSize: 22 }}>€ {totaalOmzet.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div><div className="kpi-sub">{bonOmzet.length} bon(nen) opgeslagen · vandaag € {omzetVandaag.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
                   <div className="kpi-card"><div className="kpi-label">Klanten in DB</div><div className="kpi-value">{klanten.length}</div><div className="kpi-sub">{getZakelijk(klanten).length} zakelijk · {getParticulier(klanten).length} particulier</div></div>
                 </div>
                 <div className="two-col">
                   <div className="panel">
-                    <div className="panel-header"><span className="panel-title">Recente wegingen</span><span className="badge">live</span></div>
-                    <table>
-                      <thead><tr><th>Tijd</th><th>Kenteken</th><th>Materiaal</th><th>Gewicht</th><th>Waarde</th></tr></thead>
-                      <tbody>
-                        {wegingen.slice(0, 8).map((w, index) => (
-                          <tr key={w.id + "_" + index} className={w.isNieuw ? "new-row" : ""}>
-                            <td className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>{w.tijd}</td>
-                            <td className="mono" style={{ fontSize: 12 }}>{w.kenteken}</td>
-                            <td><span className={`tag ${w.materiaal.tag}`}>{w.materiaal.naam}</span></td>
-                            <td className="mono">{w.gewicht.toLocaleString("nl-NL")} kg</td>
-                            <td className="mono" style={{ color: "var(--accent2)" }}>€ {(w.gewicht * parseFloat(prijzen[w.materiaal.id] || 0)).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    <div className="panel-header">
+                      <span className="panel-title">Recente wegingen</span>
+                      <span className="badge">{wegingen.length > 0 ? "live" : "leeg"}</span>
+                    </div>
+                    {wegingen.length === 0 ? (
+                      <div style={{ padding: "24px 20px", color: "var(--muted)", fontSize: 13 }}>
+                        Nog geen wegingen geregistreerd.
+                      </div>
+                    ) : (
+                      <table>
+                        <thead><tr><th>Tijd</th><th>Klant</th><th>Richting</th><th>Materiaal</th><th>Gewicht</th></tr></thead>
+                        <tbody>
+                          {wegingen.slice(0, 8).map((w, index) => (
+                            <tr key={w.id + "_" + index} className={w.isNieuw ? "new-row" : ""}>
+                              <td className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>{w.tijd}</td>
+                              <td style={{ fontSize: 12 }}>{w.klantNaam || "—"}</td>
+                              <td className={w.richting === "uitgaand" ? "richting-uitgaand" : w.richting === "inkomend" ? "richting-inkomend" : ""} style={{ fontSize: 12 }}>
+                                {w.richting === "uitgaand" ? "↑ Uitgaand" : w.richting === "inkomend" ? "↓ Inkomend" : "—"}
+                              </td>
+                              <td><span className={`tag ${w.materiaal.tag}`}>{w.materiaal.naam}</span></td>
+                              <td className="mono">{w.gewicht.toLocaleString("nl-NL")} kg</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
                   </div>
                   <div className="panel">
                     <div className="panel-header"><span className="panel-title">Huidige prijzen</span>{kanPrijzen && <button className="save-btn" onClick={() => setPagina("prijzen")}>Bewerken</button>}</div>
-                    <div className="price-list">
-                      {MATERIALEN.map(m => (
-                        <div key={m.id} className="price-item">
-                          <div className="price-item-left">
-                            <div className="price-dot" style={{ background: m.kleur }} />
-                            <span className="price-name">{m.naam}</span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                            <span className="mono" style={{ fontSize: 14, color: "var(--accent2)" }}>€ {prijzen[m.id]}</span>
-                            <span className="price-unit">/kg</span>
-                          </div>
+                    <div className="dashboard-prijzen-kolommen">
+                      <div>
+                        <div className="prijzen-kolom-titel">Inkoop</div>
+                        <div className="price-list">
+                          {MATERIALEN.map(m => (
+                            <div key={m.id} className="price-item">
+                              <div className="price-item-left">
+                                <div className="price-dot" style={{ background: m.kleur }} />
+                                <span className="price-name">{m.naam}</span>
+                              </div>
+                              <div className="price-waarde">
+                                <span className="mono" style={{ fontSize: 14, color: "var(--accent2)" }}>€ {prijzen[m.id]}</span>
+                                <span className="price-unit">/kg</span>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+                      <div>
+                        <div className="prijzen-kolom-titel">Opbrengst</div>
+                        <div className="price-list">
+                          {MATERIALEN.map(m => (
+                            <div key={m.id} className="price-item">
+                              <div className="price-item-left">
+                                <div className="price-dot" style={{ background: m.kleur }} />
+                                <span className="price-name">{m.naam}</span>
+                              </div>
+                              <div className="price-waarde">
+                                <span className="mono" style={{ fontSize: 14, color: "var(--green)" }}>€ {opbrengst[m.id]}</span>
+                                <span className="price-unit">/kg</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -372,17 +404,16 @@ export default function App() {
               <div className="panel">
                 <div className="panel-header"><span className="panel-title">Alle wegingen</span><span className="badge">{wegingen.length} records</span></div>
                 <table>
-                  <thead><tr><th>Datum</th><th>Tijd</th><th>Kenteken</th><th>Materiaal</th><th>Gewicht</th><th>Prijs/kg</th><th>Totaalwaarde</th><th>Bron</th></tr></thead>
+                  <thead><tr><th>Datum</th><th>Tijd</th><th>Klant</th><th>Richting</th><th>Materiaal</th><th>Gewicht</th><th>Bron</th></tr></thead>
                   <tbody>
                     {wegingen.map((w, index) => (
                       <tr key={w.id + "_" + index} className={w.isNieuw ? "new-row" : ""}>
                         <td className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>{w.datum}</td>
                         <td className="mono" style={{ color: "var(--muted)", fontSize: 12 }}>{w.tijd}</td>
-                        <td className="mono" style={{ fontSize: 12 }}>{w.kenteken}</td>
+                        <td style={{ fontSize: 12 }}>{w.klantNaam || "—"}</td>
+                        <td className={w.richting === "uitgaand" ? "richting-uitgaand" : w.richting === "inkomend" ? "richting-inkomend" : ""} style={{ fontSize: 12 }}>{w.richting === "uitgaand" ? "Uitgaand" : w.richting === "inkomend" ? "Inkomend" : "—"}</td>
                         <td><span className={`tag ${w.materiaal.tag}`}>{w.materiaal.naam}</span></td>
                         <td className="mono">{w.gewicht.toLocaleString("nl-NL")} kg</td>
-                        <td className="mono" style={{ color: "var(--muted)" }}>€ {prijzen[w.materiaal.id] || "–"}</td>
-                        <td className="mono" style={{ color: "var(--accent2)", fontWeight: 600 }}>€ {(w.gewicht * parseFloat(prijzen[w.materiaal.id] || 0)).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td><span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>{w.bron}</span></td>
                       </tr>
                     ))}
@@ -391,9 +422,13 @@ export default function App() {
               </div>
             )}
             {pagina === "prijzen" && kanPrijzen && (
-              <div style={{ maxWidth: 480 }}>
+              <div className="prijzen-grid">
                 <div className="panel">
-                  <div className="panel-header"><span className="panel-title">Prijs per materiaalsoort</span><button className="save-btn" onClick={slaOp}>Opslaan</button></div>
+                  <div className="panel-header">
+                    <span className="panel-title">Opbrengst</span>
+                    <button className="save-btn" onClick={slaOp}>Opslaan</button>
+                  </div>
+                  <p className="prijzen-hint">Verkoopprijs — inkoopprijzen worden automatisch {Math.round(OPBRENGST_KORTING * 100)}% lager berekend.</p>
                   <div className="price-list" style={{ padding: 16 }}>
                     {MATERIALEN.map(m => (
                       <div key={m.id} className="price-item" style={{ marginBottom: 10 }}>
@@ -404,8 +439,31 @@ export default function App() {
                         <div className="price-input-wrap">
                           <span style={{ fontSize: 13, color: "var(--muted)" }}>€</span>
                           <input className="price-input" type="number" step="0.01" min="0"
-                            value={tempPrijzen[m.id]}
-                            onChange={e => setTempPrijzen(p => ({ ...p, [m.id]: e.target.value }))} />
+                            value={tempOpbrengst[m.id] ?? ""}
+                            onChange={e => wijzigOpbrengst(m.id, e.target.value)} />
+                          <span className="price-unit">/ kg</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="panel">
+                  <div className="panel-header">
+                    <span className="panel-title">Inkoop</span>
+                    <span className="badge">−{Math.round(OPBRENGST_KORTING * 100)}% van opbrengst</span>
+                  </div>
+                  <p className="prijzen-hint">Klantprijs — automatisch berekend, gebruikt voor bonnen en wegingen.</p>
+                  <div className="price-list" style={{ padding: 16 }}>
+                    {MATERIALEN.map(m => (
+                      <div key={m.id} className="price-item price-item-berekend" style={{ marginBottom: 10 }}>
+                        <div className="price-item-left">
+                          <div className="price-dot" style={{ background: m.kleur, width: 10, height: 10 }} />
+                          <span className="price-name" style={{ fontSize: 14 }}>{m.naam}</span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <span className="mono" style={{ fontSize: 14, color: "var(--accent2)" }}>
+                            € {tempPrijzen[m.id] ?? "—"}
+                          </span>
                           <span className="price-unit">/ kg</span>
                         </div>
                       </div>
@@ -415,35 +473,7 @@ export default function App() {
               </div>
             )}
             {pagina === "rapport" && (
-              <div className="panel">
-                <div className="panel-header"><span className="panel-title">Overzicht per materiaal</span></div>
-                <div className="rapport-tabs">
-                  <button className={`rtab${rapTab === "kg" ? " active" : ""}`} onClick={() => setRapTab("kg")}>Gewicht (kg)</button>
-                  <button className={`rtab${rapTab === "omzet" ? " active" : ""}`} onClick={() => setRapTab("omzet")}>Omzet (€)</button>
-                </div>
-                <BarChart wegingen={wegingen} prijzen={prijzen} periode={rapTab} />
-                <div style={{ padding: "0 20px 20px" }}>
-                  <table style={{ marginTop: 8 }}>
-                    <thead><tr><th>Materiaal</th><th>Vrachten</th><th>Totaal gewicht</th><th>Prijs/kg</th><th>Totale omzet</th></tr></thead>
-                    <tbody>
-                      {MATERIALEN.map(m => {
-                        const rijen = wegingen.filter(w => w.materiaal.id === m.id);
-                        const kg = rijen.reduce((s, w) => s + w.gewicht, 0);
-                        const omzet = kg * parseFloat(prijzen[m.id] || 0);
-                        return (
-                          <tr key={m.id}>
-                            <td><span className={`tag ${m.tag}`}>{m.naam}</span></td>
-                            <td className="mono">{rijen.length}</td>
-                            <td className="mono">{kg.toLocaleString("nl-NL")} kg</td>
-                            <td className="mono">€ {prijzen[m.id]}</td>
-                            <td className="mono" style={{ color: "var(--accent2)", fontWeight: 600 }}>€ {omzet.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <RapportPagina wegingen={wegingen} materialen={MATERIALEN} />
             )}
             {pagina === "bon" && <BonBouwer prijzen={prijzen} wegingen={wegingen} klanten={klanten} />}
             {pagina === "wegen" && (
@@ -451,19 +481,20 @@ export default function App() {
                 gewichtWeegbrug={gewichtWeegbrug}
                 gewichtLoods={gewichtLoods}
                 serverVerbonden={serverVerbonden}
-                simulatieModus={simulatieModus}
                 onWeging={verstuurWeging}
                 wegingen={wegingen}
                 prijzen={prijzen}
+                opbrengst={opbrengst}
                 klanten={klanten}
               />
             )}
             {pagina === "import" && (
               <div className="panel">
-                <div className="panel-header"><span className="panel-title">XML-bestand importeren</span><span className="badge">NewTon XML-module</span></div>
+                <div className="panel-header"><span className="panel-title">XML-bestand importeren</span><span className="badge">XML-import</span></div>
                 <div style={{ padding: 20 }}><XMLImport onImport={importeerWegingen} /></div>
               </div>
             )}
+            {pagina === "formulieren" && <FormulierenPagina klanten={klanten} />}
           </div>
         </main>
       </div>
