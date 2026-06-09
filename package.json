@@ -1,6 +1,6 @@
 {
   "name": "bulters-newton-app",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Bulters Weegsysteem - voorraad- en weegsysteem voor Metaalrecycling Bulters",
   "author": "Michiel Bulters",
   "main": "electron.cjs",

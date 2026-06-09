@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stijl 03 — Modern SaaS</title>
+  <style>
+    :root {
+      --bg: #0b1120; --surface: #111827; --surface2: #1f2937; --border: #374151;
+      --accent: #6366f1; --accent2: #818cf8; --text: #f3f4f6; --muted: #9ca3af;
+      --green: #34d399; --red: #f87171;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+    .bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(17,24,39,.9); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; gap: 8px; align-items: center;
+    }
+    .bar span { font-size: 12px; color: var(--muted); margin-right: 12px; }
+    .bar a { color: var(--accent2); font-size: 12px; text-decoration: none; }
+    .bar button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; }
+    .bar button.on { background: linear-gradient(135deg, var(--accent), #8b5cf6); border: none; }
+    .view { display: none; padding-top: 52px; min-height: 100vh; }
+    .view.active { display: block; }
+
+    .login-wrap {
+      min-height: calc(100vh - 52px); display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 50% 0%, rgba(99,102,241,.15), transparent 55%);
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+      padding: 40px; width: 400px; box-shadow: 0 25px 50px rgba(0,0,0,.4);
+    }
+    .login-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 20px; background: rgba(99,102,241,.2); color: var(--accent2); margin-bottom: 16px; }
+    .login-name { font-size: 28px; font-weight: 800; letter-spacing: -.03em; margin-bottom: 6px; }
+    .login-bedrijf { color: var(--muted); margin-bottom: 32px; }
+    .fld label { display: block; font-size: 13px; font-weight: 500; color: var(--muted); margin-bottom: 8px; }
+    .fld input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px 16px; border-radius: 10px; margin-bottom: 16px; }
+    .btn-pri {
+      width: 100%; border: none; padding: 14px; border-radius: 10px; font-weight: 700; cursor: pointer; color: #fff;
+      background: linear-gradient(135deg, var(--accent), #8b5cf6); box-shadow: 0 4px 14px rgba(99,102,241,.4);
+    }
+
+    .app { display: flex; min-height: calc(100vh - 52px); }
+    .sidebar { width: 72px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 8px; }
+    .sb-logo { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), #8b5cf6); display: flex; align-items: center; justify-content: center; font-weight: 800; margin-bottom: 20px; }
+    .sb-item { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--muted); cursor: pointer; }
+    .sb-item.active { background: rgba(99,102,241,.2); color: var(--accent2); }
+    .main { flex: 1; display: flex; flex-direction: column; }
+    .topbar { padding: 20px 28px; display: flex; justify-content: space-between; align-items: center; }
+    .topbar h1 { font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+    .search { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 16px; font-size: 13px; color: var(--muted); width: 220px; }
+    .content { padding: 0 28px 28px; }
+    .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 24px; }
+    .kpi {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 22px;
+      position: relative; overflow: hidden;
+    }
+    .kpi::before { content: ""; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), #8b5cf6); opacity: .6; }
+    .kpi-l { font-size: 12px; color: var(--muted); font-weight: 500; }
+    .kpi-v { font-size: 30px; font-weight: 800; margin: 8px 0; letter-spacing: -.02em; }
+    .kpi-up { font-size: 12px; color: var(--green); }
+    .grid2 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+    .panel-h { padding: 18px 22px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 10px 22px; font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    td { padding: 14px 22px; border-top: 1px solid var(--border); font-size: 13px; }
+    .avatar { width: 28px; height: 28px; border-radius: 8px; background: var(--surface2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-right: 8px; }
+    .pill-in { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(52,211,153,.15); color: var(--green); }
+    .pill-out { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; background: rgba(248,113,113,.15); color: var(--red); }
+    .chart { padding: 20px 22px 24px; display: flex; align-items: flex-end; gap: 8px; height: 140px; }
+    .bar-c { flex: 1; background: linear-gradient(180deg, var(--accent2), var(--accent)); border-radius: 6px 6px 0 0; opacity: .7; }
+    .prijs-r { display: flex; justify-content: space-between; padding: 12px 22px; border-top: 1px solid var(--border); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span>Stijl 03 — Modern SaaS</span>
+    <a href="index.html">← Overzicht</a>
+    <button class="on" onclick="show('login')">Login</button>
+    <button onclick="show('dash')">Dashboard</button>
+  </div>
+
+  <div id="login" class="view active">
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-badge">Metaalrecycling Bulters</div>
+        <div class="login-name">Bulters Weegsysteem</div>
+        <div class="login-bedrijf">Inloggen om door te gaan</div>
+        <div class="fld"><label>E-mail / gebruikersnaam</label><input value="admin" readonly /></div>
+        <div class="fld"><label>Wachtwoord</label><input type="password" value="••••••••" readonly /></div>
+        <button class="btn-pri">Doorgaan →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dash" class="view">
+    <div class="app">
+      <aside class="sidebar">
+        <div class="sb-logo">B</div>
+        <div class="sb-item active" title="Dashboard">◉</div>
+        <div class="sb-item" title="Wegen">⚖</div>
+        <div class="sb-item" title="Bonnen">📄</div>
+        <div class="sb-item" title="Rapport">📊</div>
+        <div class="sb-item" title="Prijzen">€</div>
+      </aside>
+      <div class="main">
+        <div class="topbar">
+          <h1>Dashboard</h1>
+          <input class="search" placeholder="Zoek klant of materiaal…" readonly />
+        </div>
+        <div class="content">
+          <div class="kpis">
+            <div class="kpi"><div class="kpi-l">Gewicht totaal</div><div class="kpi-v">12,4t</div><div class="kpi-up">↑ 8% deze week</div></div>
+            <div class="kpi"><div class="kpi-l">Omzet</div><div class="kpi-v">€48k</div><div class="kpi-up">↑ 12% vandaag</div></div>
+            <div class="kpi"><div class="kpi-l">Wegingen</div><div class="kpi-v">156</div><div class="kpi-up">6 vandaag</div></div>
+            <div class="kpi"><div class="kpi-l">Live</div><div class="kpi-v" style="color:var(--green)">18.450</div><div class="kpi-up">kg weegbrug</div></div>
+          </div>
+          <div class="grid2">
+            <div class="panel">
+              <div class="panel-h">Recente activiteit</div>
+              <table>
+                <thead><tr><th>Klant</th><th>Materiaal</th><th>Richting</th><th>kg</th></tr></thead>
+                <tbody>
+                  <tr><td><span class="avatar">JV</span>Jan de Vries</td><td>Koper</td><td><span class="pill-in">Inkomend</span></td><td>450</td></tr>
+                  <tr><td><span class="avatar">MN</span>Metaalhandel Noord</td><td>Aluminium</td><td><span class="pill-out">Uitgaand</span></td><td>120</td></tr>
+                  <tr><td><span class="avatar">SB</span>Sloopbedrijf Bakker</td><td>Kabel</td><td><span class="pill-in">Inkomend</span></td><td>85</td></tr>
+                </tbody>
+              </table>
+              <div class="chart">
+                <div class="bar-c" style="height:45%"></div>
+                <div class="bar-c" style="height:70%"></div>
+                <div class="bar-c" style="height:55%"></div>
+                <div class="bar-c" style="height:90%"></div>
+                <div class="bar-c" style="height:60%"></div>
+                <div class="bar-c" style="height:80%"></div>
+                <div class="bar-c" style="height:40%"></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-h">Top materialen</div>
+              <div class="prijs-r"><span>🟢 Koper</span><span>4.250 kg</span></div>
+              <div class="prijs-r"><span>🔵 Aluminium</span><span>2.180 kg</span></div>
+              <div class="prijs-r"><span>🟤 Staal</span><span>5.920 kg</span></div>
+              <div class="prijs-r"><span>🟠 Kabel</span><span>1.040 kg</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function show(id) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      document.querySelectorAll('.bar button').forEach((b,i) => b.classList.toggle('on', (id==='login'&&i===1)||(id==='dash'&&i===2)));
+    }
+  </script>
+</body>
+</html>

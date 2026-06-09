@@ -1,10 +1,21 @@
-// Dummy weegserver voor Bulters Weegsysteem
-// Draait op ws://localhost:3000
+// Dummy weegserver voor Bulters Weegsysteem (ontwikkeling/test)
+// Draait op ws://localhost:3000 — zelfde beveiliging als server.cjs
 
 const WebSocket = require("ws");
-const wss = new WebSocket.Server({ port: 3000, host: "0.0.0.0" });
+const { parseAllowedIps, isIpAllowed, verifyWsAuth } = require("./security.cjs");
 
-console.log("🌐 Bulters Weegsysteem weegserver gestart op ws://localhost:3000");
+const CONFIG = {
+  PORT: 3000,
+  API_KEY: process.env.WEEGSERVER_KEY || "BultersWs-8kM2pQ9v",
+  ALLOWED_IPS: parseAllowedIps(process.env.WEEGSERVER_ALLOWED_IPS),
+};
+
+const wss = new WebSocket.Server({ port: CONFIG.PORT, host: "0.0.0.0" });
+
+console.log("🌐 Bulters Weegsysteem weegserver (dummy) op poort " + CONFIG.PORT);
+if (CONFIG.ALLOWED_IPS) {
+  console.log("   IP-whitelist actief:", CONFIG.ALLOWED_IPS.join(", "));
+}
 
 const MATERIAAL = [
   { id: 1, naam: "Koper",     kleur: "#4caf7d", tag: "tag-kop" },
@@ -17,16 +28,9 @@ const MATERIAAL = [
 const KENTEKENS = [
   "NL-KL-807", "NL-IJ-770", "NL-GH-733", "NL-EF-696", "NL-CD-659",
   "NL-AB-622", "NL-KL-585", "NL-IJ-548", "NL-DD-512", "NL-XX-001",
-  "NL-EE-444", "NL-ZZ-999", "NL-FF-321", "NL-GG-654", "NL-HH-987"
 ];
 
-const PRIJZEN = {
-  1: 6.40,
-  2: 1.85,
-  3: 0.35,
-  4: 4.20,
-  5: 1.10,
-};
+const PRIJZEN = { 1: 6.40, 2: 1.85, 3: 0.35, 4: 4.20, 5: 1.10 };
 
 const wegingen = [];
 let weegbrugGewicht = 0;
@@ -49,8 +53,8 @@ function genereerWeging() {
     id: Date.now() + wegingCounter,
     kenteken: KENTEKENS[Math.floor(Math.random() * KENTEKENS.length)],
     materiaal: mat,
-    gewicht: gewicht,
-    prijs: prijs,
+    gewicht,
+    prijs,
     totaal: Math.round(gewicht * prijs * 100) / 100,
     tijd: maakTijd(),
     datum: maakDatum(),
@@ -62,24 +66,21 @@ function genereerWeging() {
 for (let i = 0; i < 8; i++) {
   const w = genereerWeging();
   w.isNieuw = false;
-  const uurGeleden = i * 0.7;
-  w.tijd = new Date(Date.now() - uurGeleden * 3600000).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+  w.tijd = new Date(Date.now() - i * 0.7 * 3600000).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
   wegingen.push(w);
 }
 
 function broadcast(obj) {
   const data = JSON.stringify(obj);
   wss.clients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(data);
-    }
+    if (client.readyState === WebSocket.OPEN) client.send(data);
   });
 }
 
 setInterval(() => {
   weegbrugGewicht += weegbrugRichting * (Math.random() * 200 + 50);
   if (weegbrugGewicht > 12000) weegbrugRichting = -1;
-  if (weegbrugGewicht < 200)   weegbrugRichting = 1;
+  if (weegbrugGewicht < 200) weegbrugRichting = 1;
   weegbrugGewicht = Math.max(0, Math.round(weegbrugGewicht / 20) * 20);
   broadcast({ type: "gewicht_weegbrug", gewicht: weegbrugGewicht });
 }, 500);
@@ -89,21 +90,32 @@ setInterval(() => {
   wegingen.unshift(w);
   if (wegingen.length > 200) wegingen.length = 200;
   broadcast({ type: "nieuwe_weging", weging: w });
-  console.log(`📦 Nieuwe weging: ${w.materiaal.naam} ${w.gewicht} kg · € ${w.totaal}`);
 }, 25000);
 
 wss.on("connection", (ws, req) => {
   const ip = req.socket.remoteAddress;
-  console.log(`✓ Client verbonden vanaf ${ip}`);
+
+  if (!isIpAllowed(ip, CONFIG.ALLOWED_IPS)) {
+    console.log("✗ WebSocket geweigerd — IP:", ip);
+    ws.close(1008, "Forbidden");
+    return;
+  }
+  if (!verifyWsAuth(req, CONFIG.API_KEY)) {
+    console.log("✗ WebSocket geweigerd — ongeldige sleutel vanaf", ip);
+    ws.close(1008, "Unauthorized");
+    return;
+  }
+
+  console.log("✓ Client verbonden vanaf " + ip);
 
   ws.send(JSON.stringify({
     type: "init",
-    wegingen: wegingen,
+    wegingen,
     weegbrug: weegbrugGewicht,
     loods: null,
   }));
 
-     ws.on("message", (raw) => {
+  ws.on("message", (raw) => {
     try {
       const data = JSON.parse(raw.toString());
       if (data.type === "registreer_weging") {
@@ -113,24 +125,19 @@ wss.on("connection", (ws, req) => {
         w.isNieuw = true;
         w.tijd = maakTijd();
         w.datum = maakDatum();
-        // klantNaam doorgeven als die er is
-        if (data.weging.klantNaam) {
-          w.klantNaam = data.weging.klantNaam;
-        }
-        // vol / leeg / netto doorgeven
-        if (data.weging.vol    !== undefined) w.vol    = data.weging.vol;
-        if (data.weging.leeg   !== undefined) w.leeg   = data.weging.leeg;
-        if (data.weging.netto  !== undefined) w.netto  = data.weging.netto;
-        if (data.weging.aftrek !== undefined) w.aftrek = data.weging.aftrek;
+        if (data.weging.klantNaam) w.klantNaam = data.weging.klantNaam;
+        if (data.weging.vol !== undefined) w.vol = data.weging.vol;
+        if (data.weging.leeg !== undefined) w.leeg = data.weging.leeg;
+        if (data.weging.netto !== undefined) w.netto = data.weging.netto;
         wegingen.unshift(w);
         if (wegingen.length > 200) wegingen.length = 200;
         broadcast({ type: "nieuwe_weging", weging: w });
-        console.log(`📥 Weging: ${w.klantNaam || "?"} · ${w.materiaal?.naam || "?"} · vol ${w.vol} − leeg ${w.leeg} = ${w.netto || w.gewicht} kg`);
       }
     } catch (e) {
       console.error("Bericht fout:", e.message);
     }
   });
+});
 
 process.on("SIGINT", () => {
   console.log("\n🛑 Weegserver gestopt");

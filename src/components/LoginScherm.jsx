@@ -1,17 +1,29 @@
 import { useState } from "react";
 import { APP_NAAM, BEDRIJF_NAAM, GEBRUIKERS } from "../data/stamdata";
+import { controleerWachtwoord } from "../utils/auth";
 
 export default function LoginScherm({ onLogin }) {
   const [user, setUser] = useState("admin");
   const [pass, setPass] = useState("");
   const [fout, setFout] = useState("");
+  const [bezig, setBezig] = useState(false);
 
-  function probeerLogin() {
-    const gevonden = GEBRUIKERS.find(
-      g => g.gebruikersnaam === user.trim().toLowerCase() && g.wachtwoord === pass
-    );
-    if (gevonden) onLogin(gevonden);
-    else setFout("Onjuiste gebruikersnaam of wachtwoord.");
+  async function probeerLogin() {
+    if (bezig) return;
+    setBezig(true);
+    setFout("");
+    try {
+      const naam = user.trim().toLowerCase();
+      const gevonden = GEBRUIKERS.find(g => g.gebruikersnaam === naam);
+      if (gevonden && await controleerWachtwoord(pass, gevonden.wachtwoordHash)) {
+        const { wachtwoordHash, ...zonderHash } = gevonden;
+        onLogin(zonderHash);
+      } else {
+        setFout("Onjuiste gebruikersnaam of wachtwoord.");
+      }
+    } finally {
+      setBezig(false);
+    }
   }
 
   return (
@@ -39,7 +51,9 @@ export default function LoginScherm({ onLogin }) {
           onKeyDown={e => e.key === "Enter" && probeerLogin()}
           placeholder="••••••••"
         />
-        <button className="login-btn" onClick={probeerLogin}>Inloggen →</button>
+        <button className="login-btn" onClick={probeerLogin} disabled={bezig}>
+          {bezig ? "Bezig…" : "Inloggen →"}
+        </button>
       </div>
     </div>
   );

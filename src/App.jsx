@@ -22,7 +22,7 @@ import Calculator from "./components/Calculator";
 import KlantenSidebar from "./components/KlantenSidebar";
 import MultiWindowButtons from "./components/MultiWindowButtons";
 import FormulierenPagina from "./components/FormulierenPagina";
-import { laadServerIP, bewaarServerIP, magWeegserverVerbinden } from "./utils/weegserver";
+import { laadServerIP, bewaarServerIP, magWeegserverVerbinden, maakWeegserverWsUrl } from "./utils/weegserver";
 
 import { WEGINGEN_LS_KEY, laadWegingenUitLS, bewaarWegingenInLS } from "./utils/wegingen";
 
@@ -61,7 +61,7 @@ export default function App() {
     function verbindServer(ip) {
       let ws;
       try {
-        ws = new WebSocket(`ws://${ip}:3000`);
+        ws = new WebSocket(maakWeegserverWsUrl(ip));
       } catch (e) {
         console.error("WebSocket constructie fout:", e);
         setServerVerbonden(false);
@@ -69,7 +69,7 @@ export default function App() {
       }
       wsRef.current = ws;
       ws.onopen = () => {
-        console.log("✓ Server verbonden op ws://" + ip + ":3000");
+        console.log("✓ Server verbonden op " + ip + ":3000");
         setServerVerbonden(true);
         toonToast("✓ Live verbonden");
       };

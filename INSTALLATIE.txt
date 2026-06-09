@@ -2,36 +2,45 @@
    METAALRECYCLING BULTERS — BULTERS WEEGSYSTEEM INSTALLATIE
 ════════════════════════════════════════════════════════
 
-EENMALIGE INSTALLATIE
-──────────────────────
-1. Open Opdrachtprompt (Start → zoek "cmd")
-2. Navigeer naar deze map:
-     cd "C:\Users\tuinkabouter\Desktop\bulters-vite"
-     (pas pad aan naar waar je de map hebt uitgepakt)
-
-3. Installeer benodigdheden (eenmalig, duurt 1-2 min):
-     npm install
-
-4. Bouw de app (eenmalig):
-     npm run build
-
-5. Start de app:
-     npx serve dist
-
-6. Open in Edge/Chrome:
-     http://localhost:3000
+EENMALIGE INSTALLATIE (.exe)
+────────────────────────────
+1. Download Bulters Weegsysteem-Setup-*.exe van GitHub Releases
+2. Installeer en start de applicatie
 
 
-DAGELIJKS STARTEN
-──────────────────
-Na de eerste installatie hoef je alleen nog:
-     npx serve dist
-En dan http://localhost:3000 openen.
+ONTWIKKELING (optioneel)
+────────────────────────
+1. npm install
+2. npm run build
+3. npm run dist          → Windows installer
+   of: npm run electron:dev
+
+
+WEEGSERVER (weegbrug-PC)
+────────────────────────
+1. Start start-weegserver.bat (of: node server.cjs)
+2. Noteer het IP-adres dat in het venster verschijnt
+3. Op kantoor-PC: vul dat IP in bij Dashboard → server-IP
 
 
 INLOGGEN
-─────────
-  admin / bulters2024 → Volledige toegang
+────────
+  Gebruiker: admin
+  Wachtwoord: Bulters#W2026
+  (Wijzig dit wachtwoord via beheer — zie scripts/hash-wachtwoord.mjs)
+
+
+BEVEILIGING
+───────────
+• Weegserver-token (standaard BultersWs-8kM2pQ9v):
+  - Weegbrug-PC:  set WEEGSERVER_KEY=uw-sleutel
+  - Kantoor-PC:   kopieer .env.example naar .env en zet VITE_WEEGSERVER_KEY
+                  (bij .exe-build vóór npm run dist), daarna opnieuw bouwen
+
+• IP-whitelist (optioneel, alleen weegbrug-PC):
+  set WEEGSERVER_ALLOWED_IPS=192.168.1.20,192.168.1.21
+
+• Productie-.exe: DevTools (F12) uitgeschakeld
 
 
 ════════════════════════════════════════════════════════

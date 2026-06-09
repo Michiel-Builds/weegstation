@@ -80,7 +80,7 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      devTools: true,
+      devTools: !app.isPackaged,
       preload: preloadPath,
     },
   };
@@ -107,7 +107,6 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
   win.once("ready-to-show", () => {
     log.info("  ✓ ready-to-show → window tonen");
     win.show();
-    // Open DevTools in dev mode voor debugging
     if (!app.isPackaged) {
       log.info("  - DevTools openen (dev mode)");
       win.webContents.openDevTools();
@@ -121,12 +120,13 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
     }
   }, 3000);
 
-  // F12 om DevTools te openen
-  win.webContents.on("before-input-event", (event, input) => {
-    if (input.key === "F12") {
-      win.webContents.toggleDevTools();
-    }
-  });
+  if (!app.isPackaged) {
+    win.webContents.on("before-input-event", (event, input) => {
+      if (input.key === "F12") {
+        win.webContents.toggleDevTools();
+      }
+    });
+  }
 
   const slaOp = () => {
     if (win.isDestroyed()) return;

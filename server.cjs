@@ -11,6 +11,7 @@ const { SerialPort } = require('serialport');
 const fs         = require('fs');
 const path       = require('path');
 const os         = require('os');
+const { parseAllowedIps, isIpAllowed, verifyWsAuth } = require('./server/security.cjs');
 
 // --- Configuratie
 const CONFIG = {
@@ -26,7 +27,8 @@ const CONFIG = {
   LOODS_STOP_BITS:    1,
   LOODS_PARITY:       'none',
   NEWTON_XML_MAP: process.env.NEWTON_XML_MAP || 'C:\\NewTon\\XMLExport\\',
-  API_KEY:        process.env.WEEGSERVER_KEY || 'bulters-2024',
+  API_KEY:        process.env.WEEGSERVER_KEY || 'BultersWs-8kM2pQ9v',
+  ALLOWED_IPS:    parseAllowedIps(process.env.WEEGSERVER_ALLOWED_IPS),
 };
 
 // --- State
@@ -73,6 +75,12 @@ const httpServer = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/json');
 
+  const clientIp = req.socket.remoteAddress;
+  if (!isIpAllowed(clientIp, CONFIG.ALLOWED_IPS)) {
+    res.writeHead(403);
+    return res.end(JSON.stringify({ error: 'Forbidden' }));
+  }
+
   const clientKey = req.headers['x-api-key'];
   if (CONFIG.API_KEY && clientKey !== CONFIG.API_KEY) {
     res.writeHead(401);
@@ -102,8 +110,20 @@ const httpServer = http.createServer((req, res) => {
 const wss = new WebSocket.Server({ server: httpServer });
 
 wss.on('connection', (ws, req) => {
-  verbondenClients.add(ws);
   const ip = req.socket.remoteAddress;
+
+  if (!isIpAllowed(ip, CONFIG.ALLOWED_IPS)) {
+    log('WebSocket geweigerd — IP niet toegestaan: ' + ip);
+    ws.close(1008, 'Forbidden');
+    return;
+  }
+  if (!verifyWsAuth(req, CONFIG.API_KEY)) {
+    log('WebSocket geweigerd — ongeldige sleutel vanaf ' + ip);
+    ws.close(1008, 'Unauthorized');
+    return;
+  }
+
+  verbondenClients.add(ws);
   log('App verbonden vanaf ' + ip + ' (' + verbondenClients.size + ' actief)');
 
   ws.send(JSON.stringify({
@@ -292,6 +312,9 @@ httpServer.listen(CONFIG.HTTP_PORT, () => {
   log('=== Bulters Weegsysteem - Weegserver v1.0 ===');
   log('Server gestart op poort ' + CONFIG.HTTP_PORT);
   log('Lokaal IP: ' + getLocalIP() + ':' + CONFIG.HTTP_PORT);
+  if (CONFIG.ALLOWED_IPS) {
+    log('IP-whitelist actief: ' + CONFIG.ALLOWED_IPS.join(', '));
+  }
   startWeegbrugSerieel();
   startLoodsWeegsSchaalSerieel();
   startXMLWatcher();

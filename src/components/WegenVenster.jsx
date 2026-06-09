@@ -3,7 +3,7 @@ import WeegPagina from "./WeegPagina";
 import { getInitKlanten } from "../data/klanten";
 import { APP_NAAM, BEDRIJF_NAAM, INIT_PRIJZEN, INIT_OPBRENGST } from "../data/stamdata";
 import { laadPrijzenState } from "../utils/prijzen";
-import { laadServerIP, magWeegserverVerbinden } from "../utils/weegserver";
+import { laadServerIP, magWeegserverVerbinden, maakWeegserverWsUrl } from "../utils/weegserver";
 
 import { WEGINGEN_LS_KEY as WEGINGEN_KEY, laadWegingenUitLS } from "../utils/wegingen";
 const KLANTEN_KEY   = "newton-klanten";
@@ -33,7 +33,7 @@ export default function WegenVenster() {
     function verbind() {
       let ws;
       try {
-        ws = new WebSocket(`ws://${ip}:3000`);
+        ws = new WebSocket(maakWeegserverWsUrl(ip));
       } catch (e) {
         setServerVerbonden(false);
         return;

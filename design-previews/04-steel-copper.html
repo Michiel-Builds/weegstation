@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stijl 04 — Steel &amp; Copper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #141416; --surface: #1c1c1f; --surface2: #252528; --border: #333338;
+      --copper: #c87941; --copper2: #e8a86b; --steel: #8b9298; --text: #eceae6; --muted: #6e7178;
+      --green: #5a9e6f; --red: #c45c5c;
+      --sans: "DM Sans", system-ui, sans-serif; --mono: "JetBrains Mono", monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); }
+    .bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 10px 20px; display: flex; gap: 8px; align-items: center;
+    }
+    .bar span { font-size: 12px; color: var(--muted); margin-right: 12px; }
+    .bar a { color: var(--copper2); font-size: 12px; text-decoration: none; }
+    .bar button { background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-family: var(--sans); }
+    .bar button.on { background: var(--copper); border-color: var(--copper); color: #fff; }
+    .view { display: none; padding-top: 52px; min-height: 100vh; }
+    .view.active { display: block; }
+
+    .login-wrap {
+      min-height: calc(100vh - 52px); display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(180deg, #141416 0%, #1a1816 100%);
+    }
+    .login-card {
+      background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--copper);
+      padding: 48px 44px; width: 420px;
+    }
+    .login-stripe { height: 1px; background: linear-gradient(90deg, transparent, var(--copper), transparent); margin: 20px 0 28px; }
+    .login-label { font-family: var(--mono); font-size: 10px; color: var(--copper); letter-spacing: .25em; text-transform: uppercase; }
+    .login-name { font-size: 30px; font-weight: 700; letter-spacing: -.03em; margin: 8px 0 4px; }
+    .login-bedrijf { font-size: 14px; color: var(--steel); margin-bottom: 8px; }
+    .fld label { display: block; font-size: 11px; font-weight: 600; color: var(--steel); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+    .fld input { width: 100%; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px 14px; font-family: var(--mono); font-size: 13px; margin-bottom: 18px; }
+    .fld input:focus { outline: none; border-color: var(--copper); }
+    .btn-pri { width: 100%; background: var(--copper); color: #fff; border: none; padding: 14px; font-weight: 700; font-family: var(--sans); cursor: pointer; letter-spacing: .02em; text-transform: uppercase; font-size: 13px; }
+
+    .app { display: flex; min-height: calc(100vh - 52px); }
+    .sidebar { width: 260px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sidebar-logo { padding: 32px 28px 28px; border-bottom: 1px solid var(--border); }
+    .logo-n { font-size: 20px; font-weight: 700; }
+    .logo-l { font-size: 12px; color: var(--copper); font-family: var(--mono); margin-top: 6px; letter-spacing: .05em; }
+    .nav { padding: 20px 16px; flex: 1; }
+    .nav-sec { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .15em; padding: 0 12px; margin: 16px 0 8px; font-family: var(--mono); }
+    .nav-item {
+      display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+      font-size: 14px; font-weight: 500; color: var(--steel); margin-bottom: 2px; border-left: 2px solid transparent;
+    }
+    .nav-item.active { color: var(--text); border-left-color: var(--copper); background: rgba(200,121,65,.08); }
+    .main { flex: 1; }
+    .topbar {
+      padding: 24px 32px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: flex-end;
+    }
+    .topbar h1 { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+    .topbar-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .status { text-align: right; }
+    .status-l { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    .status-v { font-family: var(--mono); font-size: 22px; font-weight: 600; color: var(--copper2); }
+    .content { padding: 28px 32px; }
+    .kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); margin-bottom: 28px; }
+    .kpi { background: var(--surface); padding: 24px 22px; }
+    .kpi-l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; font-family: var(--mono); }
+    .kpi-v { font-family: var(--mono); font-size: 28px; font-weight: 600; margin: 10px 0 4px; color: var(--copper2); }
+    .kpi-s { font-size: 12px; color: var(--steel); }
+    .grid2 { display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px; }
+    .panel { background: var(--surface); border: 1px solid var(--border); }
+    .panel-h {
+      padding: 16px 22px; border-bottom: 1px solid var(--border);
+      font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+      display: flex; justify-content: space-between; color: var(--steel);
+    }
+    .panel-h strong { color: var(--text); }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; padding: 10px 22px; font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; border-bottom: 1px solid var(--border); }
+    td { padding: 13px 22px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-size: 12px; }
+    .mat { color: var(--copper2); }
+    .in { color: var(--green); } .out { color: var(--red); }
+    .weeg-box {
+      margin: 22px; padding: 28px; background: var(--bg); border: 1px solid var(--border);
+      text-align: center;
+    }
+    .weeg-l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; font-family: var(--mono); }
+    .weeg-v { font-family: var(--mono); font-size: 48px; font-weight: 600; color: var(--copper2); margin: 12px 0; }
+    .weeg-u { font-size: 14px; color: var(--steel); }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <span>Stijl 04 — Steel &amp; Copper</span>
+    <a href="index.html">← Overzicht</a>
+    <button class="on" onclick="show('login')">Login</button>
+    <button onclick="show('dash')">Dashboard</button>
+    <button onclick="show('weeg')">Wegen</button>
+  </div>
+
+  <div id="login" class="view active">
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="login-label">Bulters Metaalrecycling</div>
+        <div class="login-name">Weegsysteem</div>
+        <div class="login-bedrijf">Precisie · Transparantie · Controle</div>
+        <div class="login-stripe"></div>
+        <div class="fld"><label>Gebruiker</label><input value="admin" readonly /></div>
+        <div class="fld"><label>Wachtwoord</label><input type="password" value="••••••••" readonly /></div>
+        <button class="btn-pri">Toegang verkrijgen</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="dash" class="view">
+    <div class="app">
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <div class="logo-n">Bulters Weegsysteem</div>
+          <div class="logo-l">Metaalrecycling Bulters</div>
+        </div>
+        <nav class="nav">
+          <div class="nav-sec">Operatie</div>
+          <div class="nav-item active">Dashboard</div>
+          <div class="nav-item">Wegen</div>
+          <div class="nav-item">Bon maken</div>
+          <div class="nav-sec">Beheer</div>
+          <div class="nav-item">Overzicht</div>
+          <div class="nav-item">Prijzen</div>
+          <div class="nav-item">Rapport</div>
+          <div class="nav-item">Formulieren</div>
+        </nav>
+      </aside>
+      <div class="main">
+        <div class="topbar">
+          <div>
+            <h1>Dashboard</h1>
+            <div class="topbar-sub">maandag 9 juni 2026 — 3 actieve weeglijnen</div>
+          </div>
+          <div class="status">
+            <div class="status-l">WEEGBRUG LIVE</div>
+            <div class="status-v">18.450 kg</div>
+          </div>
+        </div>
+        <div class="content">
+          <div class="kpis">
+            <div class="kpi"><div class="kpi-l">Gewicht</div><div class="kpi-v">12.450</div><div class="kpi-s">kg totaal</div></div>
+            <div class="kpi"><div class="kpi-l">Omzet</div><div class="kpi-v">48.320</div><div class="kpi-s">EUR · bonnen</div></div>
+            <div class="kpi"><div class="kpi-l">Vandaag</div><div class="kpi-v">06</div><div class="kpi-s">wegingen</div></div>
+            <div class="kpi"><div class="kpi-l">Server</div><div class="kpi-v" style="color:var(--green);font-size:16px">ONLINE</div><div class="kpi-s">192.168.1.10</div></div>
+          </div>
+          <div class="grid2">
+            <div class="panel">
+              <div class="panel-h"><strong>Recente wegingen</strong><span>6 vandaag</span></div>
+              <table>
+                <thead><tr><th>Tijd</th><th>Klant</th><th>↕</th><th>Materiaal</th><th>Netto</th></tr></thead>
+                <tbody>
+                  <tr><td>14:32:08</td><td>Jan de Vries</td><td class="in">IN</td><td class="mat">Koper</td><td>450 kg</td></tr>
+                  <tr><td>13:15:44</td><td>Metaalhandel Noord</td><td class="out">UIT</td><td class="mat">Aluminium</td><td>120 kg</td></tr>
+                  <tr><td>11:08:21</td><td>Sloopbedrijf Bakker</td><td class="in">IN</td><td class="mat">Kabel</td><td>85 kg</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="panel">
+              <div class="panel-h"><strong>Opbrengst</strong><span>per kg</span></div>
+              <table>
+                <tbody>
+                  <tr><td>Koper</td><td style="text-align:right;color:var(--copper2)">€ 7,11</td></tr>
+                  <tr><td>Aluminium</td><td style="text-align:right;color:var(--copper2)">€ 2,06</td></tr>
+                  <tr><td>Staal</td><td style="text-align:right;color:var(--copper2)">€ 0,39</td></tr>
+                  <tr><td>Kabel</td><td style="text-align:right;color:var(--copper2)">€ 6,44</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="weeg" class="view">
+    <div class="app">
+      <aside class="sidebar">
+        <div class="sidebar-logo">
+          <div class="logo-n">Bulters Weegsysteem</div>
+          <div class="logo-l">Wegen</div>
+        </div>
+        <nav class="nav">
+          <div class="nav-item">Dashboard</div>
+          <div class="nav-item active">Wegen</div>
+          <div class="nav-item">Bon maken</div>
+        </nav>
+      </aside>
+      <div class="main">
+        <div class="topbar">
+          <div><h1>Wegen</h1><div class="topbar-sub">Klant 1 — Jan de Vries</div></div>
+          <div class="status"><div class="status-l">BRON</div><div class="status-v" style="font-size:16px">WEEGBRUG</div></div>
+        </div>
+        <div class="content">
+          <div class="grid2">
+            <div class="panel">
+              <div class="panel-h"><strong>Live gewicht</strong></div>
+              <div class="weeg-box">
+                <div class="weeg-l">Weegbrug — realtime</div>
+                <div class="weeg-v">18.450</div>
+                <div class="weeg-u">kilogram</div>
+              </div>
+              <div style="padding:0 22px 22px;display:flex;gap:12px">
+                <button class="btn-pri" style="flex:1">↓ Inkomend bevestigen</button>
+                <button style="flex:1;padding:14px;background:transparent;border:1px solid var(--red);color:var(--red);font-weight:700;cursor:pointer;font-family:var(--sans);text-transform:uppercase;font-size:13px">↑ Uitgaand</button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-h"><strong>Klantgegevens</strong></div>
+              <table>
+                <tbody>
+                  <tr><td style="color:var(--muted)">Materiaal</td><td class="mat">Koper</td></tr>
+                  <tr><td style="color:var(--muted)">Vol</td><td>19.200 kg</td></tr>
+                  <tr><td style="color:var(--muted)">Leeg</td><td>750 kg</td></tr>
+                  <tr><td style="color:var(--muted)">Netto</td><td style="color:var(--copper2);font-weight:600">18.450 kg</td></tr>
+                  <tr><td style="color:var(--muted)">Inkoop</td><td>€ 6,40 / kg</td></tr>
+                  <tr><td style="color:var(--muted)">Totaal</td><td style="color:var(--copper2)">€ 118.080</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function show(id) {
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      const btns = document.querySelectorAll('.bar button');
+      btns.forEach((b,i) => b.classList.toggle('on', i > 0 && ((id==='login'&&i===1)||(id==='dash'&&i===2)||(id==='weeg'&&i===3))));
+    }
+  </script>
+</body>
+</html>

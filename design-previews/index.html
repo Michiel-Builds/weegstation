@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bulters Weegsysteem — Design voorbeelden</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: #0c0d0e;
+      color: #e8e4de;
+      min-height: 100vh;
+      padding: 48px 32px 80px;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
+    .sub { color: #7a7570; margin-bottom: 40px; line-height: 1.6; max-width: 640px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+    .card {
+      background: #181a1b;
+      border: 1px solid #2e3133;
+      border-radius: 14px;
+      overflow: hidden;
+      transition: border-color .2s, transform .2s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .card:hover { border-color: #66bb6a; transform: translateY(-3px); }
+    .preview {
+      height: 160px;
+      display: flex;
+      align-items: flex-end;
+      padding: 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .p1 { background: linear-gradient(135deg, #0f1011 40%, #1a3d1f); }
+    .p2 { background: linear-gradient(135deg, #f4f6f8 40%, #dce8f5); color: #1a2b3c; }
+    .p3 { background: linear-gradient(135deg, #0f172a 40%, #1e3a5f); }
+    .p4 { background: linear-gradient(135deg, #1c1c1e 40%, #3d3028); }
+    .body { padding: 20px; }
+    .body h2 { font-size: 1.1rem; margin-bottom: 6px; }
+    .body p { font-size: 13px; color: #7a7570; line-height: 1.5; }
+    .tag {
+      display: inline-block;
+      margin-top: 12px;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(102,187,106,.12);
+      color: #66bb6a;
+    }
+    .hint {
+      margin-top: 48px;
+      padding: 16px 20px;
+      background: #212426;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #7a7570;
+      line-height: 1.6;
+    }
+    code { color: #66bb6a; font-family: Consolas, monospace; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Bulters Weegsysteem</h1>
+    <p class="sub">
+      Vier professionele frontend-stijlen om te vergelijken. Elk bestand toont login + dashboard
+      met dezelfde functionaliteit (wegen, bonnen, rapport, prijzen). Open een kaart om het volledige voorbeeld te bekijken.
+    </p>
+
+    <div class="grid">
+      <a class="card" href="01-industrial-dark.html">
+        <div class="preview p1">Stijl 01</div>
+        <div class="body">
+          <h2>Industrial Dark</h2>
+          <p>Donker, robuust en industrieel — aansluitend bij metaalrecycling. Groene accenten, monospace cijfers.</p>
+          <span class="tag">Huidige richting verfijnd</span>
+        </div>
+      </a>
+
+      <a class="card" href="02-corporate-light.html">
+        <div class="preview p2">Stijl 02</div>
+        <div class="body">
+          <h2>Corporate Light</h2>
+          <p>Licht en zakelijk. Veel witruimte, blauw-grijs palet. Vertrouwd kantoor-gevoel.</p>
+          <span class="tag">Professioneel B2B</span>
+        </div>
+      </a>
+
+      <a class="card" href="03-modern-saas.html">
+        <div class="preview p3">Stijl 03</div>
+        <div class="body">
+          <h2>Modern SaaS</h2>
+          <p>Contemporary dashboard met zachte schaduwen, gradient-accenten en duidelijke data-hiërarchie.</p>
+          <span class="tag">Tech / startup</span>
+        </div>
+      </a>
+
+      <a class="card" href="04-steel-copper.html">
+        <div class="preview p4">Stijl 04</div>
+        <div class="body">
+          <h2>Steel &amp; Copper</h2>
+          <p>Metaal-geïnspireerd: staalgrijs, koperaccenten, strakke typografie. Premium industrieel.</p>
+          <span class="tag">Premium / merk</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="hint">
+      <strong>Openen:</strong> dubbelklik op een HTML-bestand, of start vanuit de projectmap:<br>
+      <code>npx serve design-previews</code> → open <code>http://localhost:3000</code>
+    </div>
+  </div>
+</body>
+</html>
