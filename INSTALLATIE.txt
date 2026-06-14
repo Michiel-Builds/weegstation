@@ -45,4 +45,9 @@ NOODHERSTEL WACHTWOORD
   → hash plaatsen in auth.json (zie script-output)
 
 
+UPGRADE VAN BULTERS v2 → WEEGSTATION v3
+───────────────────────────────────────
+  Zie MIGRATIE.txt (data-map kopiëren + weegserver)
+
+
 ════════════════════════════════════════════════════════

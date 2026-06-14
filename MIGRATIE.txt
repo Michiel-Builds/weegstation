@@ -1,0 +1,158 @@
+════════════════════════════════════════════════════════
+   WEEGSTATION v3 — MIGRATIE VAN BULTERS / NEWTON v2
+════════════════════════════════════════════════════════
+
+Voor bestaande klanten die Bulters Weegsysteem (v1.x / v2.x) draaien.
+
+
+OVERZICHT
+─────────
+• Kantoor-PC:  oude app → WeegStation-Setup-3.0.0.exe
+• Weegbrug-PC: oude weegserver blijft werken; optioneel vervangen door Weegserver.zip
+• Data: wegingen, klanten, prijzen en bonnen worden meegenomen (zie stappen)
+• Wachtwoord en weegserver-sleutel blijven hetzelfde als u de data-map kopieert
+
+
+════════════════════════════════════════════════════════
+DEEL 1 — KANTOOR-PC (BELANGRIJK: DATA-MAP)
+════════════════════════════════════════════════════════
+
+Windows bewaart app-gegevens per product. De oude app gebruikt:
+
+  %APPDATA%\bulters-newton-app\
+
+WeegStation v3 gebruikt:
+
+  %APPDATA%\weegstation-app\
+
+Zonder kopie start u opnieuw met een lege installatie.
+
+
+STAP VOOR STAP
+──────────────
+1. Sluit Bulters Weegsysteem volledig af (ook bon-/weeg-vensters).
+
+2. Maak een backup:
+   Kopieer de map
+     %APPDATA%\bulters-newton-app
+   naar bijv.
+     C:\Backup\bulters-newton-app-2026\
+
+3. Installeer WeegStation-Setup-3.0.0.exe
+   (oude Bulters-app hoeft niet verwijderd; mag wel)
+
+4. Start WeegStation NOG NIET.
+
+5. Kopieer de inhoud van de backup naar de nieuwe map:
+   • Bron:  %APPDATA%\bulters-newton-app\   (of uw backup)
+   • Doel:  %APPDATA%\weegstation-app\
+
+   Kopieer minimaal:
+   • auth.json
+   • Local Storage\   (hele map)
+   • posities.json    (vensterposities, optioneel)
+
+6. Maak bedrijf.json aan in %APPDATA%\weegstation-app\
+   (alleen nodig als dit bestand nog niet bestaat):
+
+   {
+     "bedrijfsnaam": "Uw bedrijfsnaam",
+     "thema": "dark",
+     "accent": "#2e7d32",
+     "accent2": "#66bb6a"
+   }
+
+   Vervang "Uw bedrijfsnaam" door de naam die op bonnen moet staan
+   (bijv. Metaalrecycling Bulters B.V.).
+
+7. Start WeegStation.
+
+8. Log in met hetzelfde wachtwoord als voorheen.
+
+9. Controleer in de app:
+   • Dashboard → weegserver-IP en sleutel kloppen nog
+   • Wegingen, klanten en prijzen zijn aanwezig
+   • Instellingen → pas bedrijfsnaam/thema aan indien gewenst
+
+
+AUTOMATISCHE SLEUTEL-MIGRATIE
+─────────────────────────────
+Bij eerste start kopieert de app oude opslagnamen automatisch:
+
+  newton-wegingen      → ws-wegingen
+  newton-klanten       → ws-klanten
+  newton-prijzen       → ws-prijzen
+  newton-bonnen        → ws-bonnen
+  newton-server-key    → ws-server-key
+  bulters-auth-config  → ws-auth-config
+  (en overige newton-* sleutels)
+
+Dit werkt alleen als stap 5 (Local Storage kopieren) is uitgevoerd.
+
+
+PROBLEMEN?
+──────────
+• Eerste-setup scherm terwijl u al een klant bent?
+  → auth.json of bedrijf.json ontbreekt in weegstation-app. Herhaal stap 5–6.
+
+• Wachtwoord werkt niet?
+  → auth.json niet gekopieerd. Kopieer opnieuw uit backup.
+
+• Geen wegingen/klanten?
+  → Local Storage\ map niet gekopieerd. Kopieer opnieuw uit backup.
+
+• Noodherstel wachtwoord:
+  node scripts/hash-wachtwoord.mjs "nieuw-wachtwoord"
+  → hash in auth.json zetten (zie INSTALLATIE.txt)
+
+
+════════════════════════════════════════════════════════
+DEEL 2 — WEEGBRUG-PC
+════════════════════════════════════════════════════════
+
+OPTIE A — Niets doen (meestal voldoende)
+────────────────────────────────────────
+De bestaande weegserver met uw huidige .env blijft werken.
+WeegStation op kantoor verbindt met dezelfde IP en WEEGSERVER_KEY.
+
+
+OPTIE B — Verversen naar Weegserver.zip v3
+──────────────────────────────────────────
+1. Noteer de huidige WEEGSERVER_KEY uit .env (niet wijzigen!).
+
+2. Stop de oude weegserver (sluit het cmd-venster).
+
+3. Backup de oude map (bijv. C:\Bulters\Weegserver\).
+
+4. Pak Weegserver.zip uit naar een nieuwe map
+   (bijv. C:\WeegStation\Weegserver\).
+
+5. Kopieer uw oude .env naar de nieuwe map
+   (zelfde WEEGSERVER_KEY, COM-poorten, eventueel IP-whitelist).
+
+6. Start start-weegserver.bat in de nieuwe map.
+
+7. Controleer op kantoor: dashboard toont “Live” verbinding.
+
+
+════════════════════════════════════════════════════════
+DEEL 3 — WAT IS ER VERANDERD?
+════════════════════════════════════════════════════════
+
+• Productnaam: Bulters Weegsysteem / NewTon+ → WeegStation
+• Bedrijfsnaam op bonnen: instelbaar per klant (niet meer vast Bulters)
+• Licht en donker thema + eigen kleuren
+• GitHub: https://github.com/Michiel-Builds/weegstation
+• Oude repo newton-plus is gearchiveerd
+• Auto-update: werkt alleen met internet + public repo weegstation
+
+
+════════════════════════════════════════════════════════
+SAMENVATTING VOOR DE BEHEERDER
+════════════════════════════════════════════════════════
+
+Kantoor:  backup → installeren → map kopiëren → bedrijf.json → starten
+Weegbrug: .env behouden; server vervangen is optioneel
+Download: https://github.com/Michiel-Builds/weegstation/releases/tag/v3.0.0
+
+════════════════════════════════════════════════════════
