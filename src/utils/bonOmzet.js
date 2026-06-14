@@ -1,6 +1,6 @@
 import { MATERIALEN } from "../data/stamdata";
 
-export const BON_OMZET_LS_KEY = "newton-bon-omzet";
+export const BON_OMZET_LS_KEY = "ws-bon-omzet";
 
 function vindMateriaalOpNaam(naam) {
   if (!naam?.trim()) return null;
@@ -32,7 +32,7 @@ export function bewaarBonOmzet(regels) {
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(BON_OMZET_LS_KEY, JSON.stringify(regels));
-    window.dispatchEvent(new CustomEvent("newton-bon-omzet-update"));
+    window.dispatchEvent(new CustomEvent("ws-bon-omzet-update"));
   } catch {}
 }
 

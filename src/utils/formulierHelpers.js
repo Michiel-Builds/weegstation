@@ -1,4 +1,4 @@
-import { BULTERS_PARTIJ } from "../data/bultersBedrijf";
+import { maakStandaardPartij } from "../data/standaardPartij";
 
 export const FORM_ROLLEN = [
   { key: "afzender", label: "Afzender" },
@@ -46,7 +46,7 @@ export function maakDocumentnummer() {
   return `FORM-${datum}-${seq}`;
 }
 
-export function maakInitFormulierData() {
+export function maakInitFormulierData(bedrijfsnaam = "") {
   const vandaag = new Date().toLocaleDateString("nl-NL");
   return {
     documentnummer: maakDocumentnummer(),
@@ -70,7 +70,7 @@ export function maakInitFormulierData() {
     factuuradres: maakLegePartij(),
     uitbesteedVervoerder: maakLegePartij(),
     partijen: {
-      afzender: { ...BULTERS_PARTIJ },
+      afzender: maakStandaardPartij(bedrijfsnaam),
       ontvanger: maakLegePartij(),
       transporteur: maakLegePartij(),
     },
@@ -96,7 +96,7 @@ export function partijNaarPlain(p) {
   return partijNaarTekst(p).replace(/<br>/g, "\n");
 }
 
-const STORAGE_KEY = "newton-formulieren";
+const STORAGE_KEY = "ws-formulieren";
 
 export function laadFormulierData() {
   if (typeof window === "undefined") return maakInitFormulierData();

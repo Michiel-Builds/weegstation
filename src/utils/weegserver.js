@@ -1,15 +1,23 @@
-export const SERVER_IP_LS_KEY = "newton-server-ip";
-
-/** Moet overeenkomen met WEEGSERVER_KEY op de weegbrug-PC. Overschrijf via .env → VITE_WEEGSERVER_KEY */
-export const DEFAULT_WEEGSERVER_KEY = import.meta.env.VITE_WEEGSERVER_KEY || "BultersWs-8kM2pQ9v";
+export const SERVER_IP_LS_KEY = "ws-server-ip";
+export const SERVER_KEY_LS_KEY = "ws-server-key";
 
 export function laadServerKey() {
-  return DEFAULT_WEEGSERVER_KEY;
+  try {
+    return localStorage.getItem(SERVER_KEY_LS_KEY) || "";
+  } catch {
+    return "";
+  }
 }
 
-export function maakWeegserverWsUrl(ip, poort = 3000) {
+export function bewaarServerKey(key) {
+  try {
+    localStorage.setItem(SERVER_KEY_LS_KEY, key || "");
+  } catch {}
+}
+
+export function maakWeegserverWsUrl(ip, sleutel, poort = 3000) {
   const host = (ip || "localhost").trim();
-  const key = encodeURIComponent(laadServerKey());
+  const key = encodeURIComponent((sleutel || "").trim());
   return `ws://${host}:${poort}?key=${key}`;
 }
 

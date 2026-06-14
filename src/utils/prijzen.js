@@ -1,7 +1,7 @@
 import { OPBRENGST_KORTING } from "../data/stamdata";
 
-export const PRIJZEN_LS_KEY = "newton-prijzen";
-export const OPBRENGST_LS_KEY = "newton-opbrengst";
+export const PRIJZEN_LS_KEY = "ws-prijzen";
+export const OPBRENGST_LS_KEY = "ws-opbrengst";
 
 export function inkoopVanOpbrengst(opbrengst) {
   const n = parseFloat(opbrengst);

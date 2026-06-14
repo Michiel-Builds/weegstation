@@ -1,18 +1,38 @@
-// Dummy weegserver voor Bulters Weegsysteem (ontwikkeling/test)
+// Dummy weegserver voor WeegStation (ontwikkeling/test)
 // Draait op ws://localhost:3000 — zelfde beveiliging als server.cjs
 
 const WebSocket = require("ws");
+const fs = require("fs");
+const path = require("path");
 const { parseAllowedIps, isIpAllowed, verifyWsAuth } = require("./security.cjs");
+
+function laadDotEnv(pad) {
+  try {
+    if (!fs.existsSync(pad)) return;
+    fs.readFileSync(pad, "utf8").split("\n").forEach((regel) => {
+      const m = regel.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m) return;
+      if (!process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "").trim();
+    });
+  } catch {}
+}
+
+laadDotEnv(path.join(__dirname, "..", ".env"));
 
 const CONFIG = {
   PORT: 3000,
-  API_KEY: process.env.WEEGSERVER_KEY || "BultersWs-8kM2pQ9v",
+  API_KEY: process.env.WEEGSERVER_KEY || "",
   ALLOWED_IPS: parseAllowedIps(process.env.WEEGSERVER_ALLOWED_IPS),
 };
 
+if (!CONFIG.API_KEY) {
+  console.error("Dummy-weegserver: zet WEEGSERVER_KEY in .env in projectmap.");
+  process.exit(1);
+}
+
 const wss = new WebSocket.Server({ port: CONFIG.PORT, host: "0.0.0.0" });
 
-console.log("🌐 Bulters Weegsysteem weegserver (dummy) op poort " + CONFIG.PORT);
+console.log("🌐 WeegStation weegserver (dummy) op poort " + CONFIG.PORT);
 if (CONFIG.ALLOWED_IPS) {
   console.log("   IP-whitelist actief:", CONFIG.ALLOWED_IPS.join(", "));
 }

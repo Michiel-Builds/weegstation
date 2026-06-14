@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { PRODUCT_NAAM } from "../data/product";
 import { MATERIALEN } from "../data/stamdata";
 import KlantAutocomplete from "./KlantAutocomplete";
 import {
@@ -33,6 +34,7 @@ export default function WeegPagina({
   gewichtWeegbrug, gewichtLoods,
   serverVerbonden,
   onWeging, wegingen = [], prijzen = {}, opbrengst = {}, klanten = [],
+  bedrijfsnaam = "WeegStation",
 }) {
   const [klantenLijst, setKlantenLijst] = useState(() =>
     Array.from({ length: 5 }, (_, i) => maakLegeKlant(i + 1))
@@ -46,9 +48,9 @@ export default function WeegPagina({
   // Luister naar globale klant-selectie
   useEffect(() => {
     const interval = setInterval(() => {
-      if (typeof window !== "undefined" && window.__newtonGeselecteerdeKlant) {
-        const k = window.__newtonGeselecteerdeKlant;
-        window.__newtonGeselecteerdeKlant = null;
+      if (typeof window !== "undefined" && window.__wsGeselecteerdeKlant) {
+        const k = window.__wsGeselecteerdeKlant;
+        window.__wsGeselecteerdeKlant = null;
         setKlantenLijst(prev => {
           const nieuweLijst = [...prev];
           const doelIdx = nieuweLijst.findIndex(kk => !kk.naam);
@@ -209,7 +211,7 @@ body { font-family: "Segoe UI", -apple-system, sans-serif; margin: 0; color: #00
 .footer { text-align: center; font-size: 10px; color: #888; margin-top: 20px; padding-top: 8px; border-top: 1px dashed #999; }
 </style></head><body>
 <div class="bon">
-<div class="kop"><div class="kop-titel">METAALRECYCLING BULTERS</div><div class="kop-sub">Bewijs van weging</div></div>
+<div class="kop"><div class="kop-titel">${bedrijfsnaam.toUpperCase()}</div><div class="kop-sub">Bewijs van weging</div></div>
 <div class="bonnr">Bon ${bonnummer} · ${datum} · ${tijd}</div>
 <div class="sectie"><div class="sectie-titel">Klantgegevens</div>
 <div class="rij"><span class="l">Naam</span><span class="r">${k.naam}</span></div>
@@ -223,7 +225,7 @@ body { font-family: "Segoe UI", -apple-system, sans-serif; margin: 0; color: #00
 </div>
 <div class="netto-blok"><div class="netto-label">Netto gewicht</div><div class="netto-waarde">${fmtI(netto)} kg</div></div>
 <div class="handtekening"><div class="handtekening-label">Voor akkoord:</div><div class="handtekening-lijn"></div></div>
-<div class="footer">Bulters Weegsysteem · Metaalrecycling Bulters · Bon ${bonnummer}<br>Deze bon dient als bewijs van weging</div>
+<div class="footer">${PRODUCT_NAAM} · ${bedrijfsnaam} · Bon ${bonnummer}<br>Deze bon dient als bewijs van weging</div>
 </div>
 </body></html>
 `);

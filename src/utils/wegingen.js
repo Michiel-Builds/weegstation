@@ -1,7 +1,7 @@
 import { berekenOmzetWeging } from "./opbrengstDag";
 
-export const WEGINGEN_LS_KEY = "newton-wegingen";
-const WEGINGEN_RESET_KEY = "newton-wegingen-reset-v1";
+export const WEGINGEN_LS_KEY = "ws-wegingen";
+const WEGINGEN_RESET_KEY = "ws-wegingen-reset-v1";
 
 function eenmaligeWegingenReset() {
   try {

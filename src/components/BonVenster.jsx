@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import BonBouwer from "./BonBouwer";
 import { getInitKlanten } from "../data/klanten";
-import { APP_NAAM, BEDRIJF_NAAM, INIT_PRIJZEN, INIT_OPBRENGST } from "../data/stamdata";
+import { INIT_PRIJZEN, INIT_OPBRENGST } from "../data/stamdata";
+import { PRODUCT_NAAM } from "../data/product";
+import { laadBedrijfConfig } from "../utils/bedrijfConfig";
 import {
   getCachedPrijzenState, PRIJZEN_LS_KEY, OPBRENGST_LS_KEY, prijzenVanOpbrengst,
 } from "../utils/prijzen";
 
 import { WEGINGEN_LS_KEY as WEGINGEN_KEY, laadWegingenUitLS } from "../utils/wegingen";
-const KLANTEN_KEY   = "newton-klanten";
+const KLANTEN_KEY   = "ws-klanten";
 
 function laadLS(key, fallback) {
   try {
@@ -21,8 +23,14 @@ export default function BonVenster() {
   const [wegingen, setWegingen] = useState(() => laadWegingenUitLS());
   const [prijzen,  setPrijzen]  = useState(() => getCachedPrijzenState(INIT_OPBRENGST, INIT_PRIJZEN).prijzen);
   const [toast,    setToast]    = useState(null);
+  const [bedrijfsnaam, setBedrijfsnaam] = useState("");
 
-  useEffect(() => { document.title = `${APP_NAAM} — Bon-venster`; }, []);
+  useEffect(() => {
+    document.title = `${PRODUCT_NAAM} — Bon-venster`;
+    laadBedrijfConfig().then(cfg => {
+      if (cfg?.bedrijfsnaam) setBedrijfsnaam(cfg.bedrijfsnaam);
+    });
+  }, []);
 
   // Sync van andere vensters
   useEffect(() => {
@@ -53,7 +61,7 @@ export default function BonVenster() {
     <div className="mw-layout">
       <div className="topbar">
         <div className="page-title">📄 Bon-venster</div>
-        <div className="topbar-center">{BEDRIJF_NAAM}</div>
+        <div className="topbar-center">{bedrijfsnaam || "—"}</div>
         <div className="topbar-right">
           <span className="status-pill">
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
@@ -68,6 +76,7 @@ export default function BonVenster() {
           prijzen={prijzen}
           wegingen={wegingen}
           klanten={klanten}
+          bedrijfsnaam={bedrijfsnaam || PRODUCT_NAAM}
         />
       </div>
       {toast && <div className="toast">{toast}</div>}

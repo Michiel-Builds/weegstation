@@ -1,61 +1,48 @@
 ════════════════════════════════════════════════════════
-   METAALRECYCLING BULTERS — BULTERS WEEGSYSTEEM INSTALLATIE
+   WEEGSTATION — INSTALLATIE
 ════════════════════════════════════════════════════════
 
-EENMALIGE INSTALLATIE (.exe)
-────────────────────────────
-1. Download Bulters Weegsysteem-Setup-*.exe van GitHub Releases
-2. Installeer en start de applicatie
+WAT GEEF JE DE KLANT?
+─────────────────────
+• Kantoor-PC:  WeegStation-Setup-*.exe
+• Weegbrug-PC: Weegserver.zip
 
 
-ONTWIKKELING (optioneel)
+EERSTE INSTALLATIE (kantoor-PC)
+───────────────────────────────
+1. Installeer de .exe
+2. Bij eerste start: bedrijfsnaam, gebruiker, wachtwoord en thema instellen
+3. Noteer de weegserver-sleutel die op het scherm verschijnt
+4. Geef die sleutel ook door voor de weegbrug-PC (.env)
+
+
+WEEGSERVER (weegbrug-PC)
 ────────────────────────
-1. npm install
-2. npm run build
-3. npm run dist          → Windows installer
-   of: npm run electron:dev
+1. Node.js LTS installeren
+2. Weegserver.zip uitpakken
+3. config.example.env kopiëren naar .env
+4. WEEGSERVER_KEY invullen (zelfde als in app bij eerste setup)
+5. start-weegserver.bat starten
+6. IP noteren → invullen in app op dashboard
 
 
-WAT GEEF JE DE KLANT? (geen volledige broncode)
-──────────────────────────────────────────────
-• Kantoor-PC:  Bulters Weegsysteem-Setup-*.exe  (GitHub Release)
-• Weegbrug-PC: Bulters-Weegserver.zip           (lokaal bouwen, zie hieronder)
+BEVEILIGING (geen geheimen in broncode)
+───────────────────────────────────────
+• Geen standaard wachtwoord — per installatie eigen wachtwoord
+• Geen standaard weegserver-sleutel — per klant gegenereerd
+• Optioneel IP-whitelist: WEEGSERVER_ALLOWED_IPS op weegbrug-PC
 
 
-WEEGSERVER-ZIP BOUWEN (jij, vóór levering)
-──────────────────────────────────────────
-  npm run pak-weegserver
-
-  Output: release/Bulters-Weegserver.zip
-  Bevat alleen server + LEESMIJ.txt — geen React/Electron/broncode.
+BOUWEN (ontwikkelaar)
+─────────────────────
+  npm run dist              → .exe voor kantoor
+  npm run pak-weegserver    → ZIP voor weegbrug
 
 
-WEEGSERVER (weegbrug-PC — klant)
-────────────────────────────────
-1. Node.js LTS installeren (nodejs.org)
-2. Bulters-Weegserver.zip uitpakken naar C:\Bulters\Weegserver\
-3. Dubbelklik start-weegserver.bat
-4. IP noteren → invullen op kantoor-PC in de app
-
-
-INLOGGEN
-────────
-  Gebruiker: admin
-  Wachtwoord: Bulters#W2026
-  (Wijzig dit wachtwoord via beheer — zie scripts/hash-wachtwoord.mjs)
-
-
-BEVEILIGING
-───────────
-• Weegserver-token (standaard BultersWs-8kM2pQ9v):
-  - Weegbrug-PC:  set WEEGSERVER_KEY=uw-sleutel
-  - Kantoor-PC:   kopieer .env.example naar .env en zet VITE_WEEGSERVER_KEY
-                  (bij .exe-build vóór npm run dist), daarna opnieuw bouwen
-
-• IP-whitelist (optioneel, alleen weegbrug-PC):
-  set WEEGSERVER_ALLOWED_IPS=192.168.1.20,192.168.1.21
-
-• Productie-.exe: DevTools (F12) uitgeschakeld
+NOODHERSTEL WACHTWOORD
+──────────────────────
+  node scripts/hash-wachtwoord.mjs "nieuw-wachtwoord"
+  → hash plaatsen in auth.json (zie script-output)
 
 
 ════════════════════════════════════════════════════════

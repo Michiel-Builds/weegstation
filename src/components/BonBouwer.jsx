@@ -2,12 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { maakBonnummer, printBon as printBonUtil } from "../utils/helpers";
 import { exporteerBonNaarPdf } from "../utils/pdfExport";
 import { registreerBonOmzet } from "../utils/bonOmzet";
+import { PRODUCT_NAAM } from "../data/product";
 import { MATERIALEN } from "../data/stamdata";
 import KlantAutocomplete from "./KlantAutocomplete";
 import MateriaalAutocomplete from "./MateriaalAutocomplete";
 
 const AANTAL_RIJEN = 15;
-const STORAGE_KEY = "newton-bonnen";
+const STORAGE_KEY = "ws-bonnen";
 
 function fmt(n)  { return Number(n).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtI(n) { return Number(n).toLocaleString("nl-NL", { maximumFractionDigits: 0 }); }
@@ -126,7 +127,7 @@ function laadBonnen() {
   return null;
 }
 
-export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
+export default function BonBouwer({ prijzen, wegingen = [], klanten = [], bedrijfsnaam = "WeegStation" }) {
   const [bonnen, setBonnen] = useState([maakLegeBon(1)]);
   const [actieveBonId, setActieveBonId] = useState(1);
   const [toast, setToast] = useState(null);
@@ -203,9 +204,9 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
   // Luister naar globale klant-selectie
   useEffect(() => {
     const interval = setInterval(() => {
-      if (typeof window !== "undefined" && window.__newtonGeselecteerdeKlant) {
-        const k = window.__newtonGeselecteerdeKlant;
-        window.__newtonGeselecteerdeKlant = null;
+      if (typeof window !== "undefined" && window.__wsGeselecteerdeKlant) {
+        const k = window.__wsGeselecteerdeKlant;
+        window.__wsGeselecteerdeKlant = null;
         updateActieveBon(prev => ({
           ...prev,
           klant: { ...prev.klant, ...klantNaarForm(k) },
@@ -410,7 +411,7 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
           vol: r.vol, leeg: r.leeg, aftrek: r.aftrek,
           totaal: r.totaal, prijs: r.prijs, subtotaal: r.subtotaal
         })),
-        totaalKg, totaalEuro
+        totaalKg, totaalEuro, bedrijfsnaam, productNaam: PRODUCT_NAAM
       });
       toonToast("🖨 Afdrukken gestart — bon blijft open");
     } catch (e) {
@@ -430,7 +431,7 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [] }) {
       regels: regels.map(r => ({
         materiaal: { naam: r.materiaal }, kenteken: "–", totaal: r.totaal, prijs: r.prijs,
       })),
-      totaalKg, totaalEuro
+      totaalKg, totaalEuro, bedrijfsnaam
     });
     registreerBonOmzet({
       bonnummer: actieveBon.bonnummer,

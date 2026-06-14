@@ -4,6 +4,7 @@ import { MATERIALEN } from "../data/stamdata";
 export default function ChauffeurScherm({
   gebruiker, onLogout, onWeging,
   gewichtWeegbrug, gewichtLoods, serverVerbonden = false,
+  bedrijfsnaam = "WeegStation",
 }) {
   const [kenteken, setKenteken]         = useState("");
   const [materiaal, setMateriaal]       = useState(null);
@@ -42,7 +43,7 @@ export default function ChauffeurScherm({
       <div className="weeg-card">
         <div className="weeg-header">
           <div className="weeg-header-left">
-            <span className="weeg-bedrijf">Metaalrecycling Bulters</span>
+            <span className="weeg-bedrijf">{bedrijfsnaam}</span>
             <span className="weeg-title">⚖ Weegpunt</span>
           </div>
           <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontFamily: "var(--mono)" }}>

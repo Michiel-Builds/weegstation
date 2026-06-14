@@ -21,4 +21,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   laadPosities: () => ipcRenderer.invoke("laad-posities"),
   slaPositieOp: (vensterType, positie) =>
     ipcRenderer.invoke("sla-positie", { vensterType, positie }),
+
+  laadAuthConfig: () => ipcRenderer.invoke("laad-auth"),
+  bewaarAuthConfig: (config) => ipcRenderer.invoke("bewaar-auth", config),
+
+  laadBedrijfConfig: () => ipcRenderer.invoke("laad-bedrijf"),
+  bewaarBedrijfConfig: (config) => ipcRenderer.invoke("bewaar-bedrijf", config),
 });

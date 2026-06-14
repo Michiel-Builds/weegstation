@@ -1,57 +1,28 @@
-════════════════════════════════════════════════════════
-  BULTERS WEEGSERVER — Installatie weegbrug-PC
-  (Alleen dit pakket — geen broncode nodig)
-════════════════════════════════════════════════════════
-
-WAT ZIT HIERIN?
-───────────────
-Alleen de weegserver: leest gewicht van de weegbrug en stuurt
-het naar de Bulters Weegsysteem-app op de kantoor-PC.
-
-
-VOOR WIE?
-─────────
-• Weegbrug-PC  → dit pakket + Node.js
-• Kantoor-PC   → Bulters Weegsysteem-Setup-*.exe (apart geleverd)
-
-
 EENMALIG INSTALLEREN
 ────────────────────
-1. Installeer Node.js LTS van https://nodejs.org (eenmalig)
+1. Installeer Node.js LTS van https://nodejs.org
 
-2. Pak deze map uit, bijvoorbeeld naar:
-     C:\Bulters\Weegserver\
+2. Pak deze map uit naar bijv. C:\WeegStation\Weegserver\
 
-3. Dubbelklik: start-weegserver.bat
-   (eerste keer duurt iets langer door npm install)
+3. Kopieer config.example.env naar .env
 
-4. Noteer het IP-adres in het venster, bijv.:
-     Lokaal IP: 192.168.1.15:3000
+4. Vul in .env de WEEGSERVER_KEY in
+   (dezelfde sleutel als bij eerste installatie van WeegStation
+    op de kantoor-PC — wordt daar automatisch aangemaakt)
 
-5. Op de kantoor-PC: open de app → Dashboard → vul dat IP in
+5. Dubbelklik start-weegserver.bat
 
-6. Windows Firewall: sta Node.js toe op privénetwerk (poort 3000)
+6. Noteer het IP-adres in het venster
+
+7. Op kantoor-PC: app openen → Dashboard → IP + sleutel controleren
 
 
 ELKE DAG
 ────────
-1. Weegbrug aanzetten
-2. Dubbelklik start-weegserver.bat
-3. Venster open laten
+Dubbelklik start-weegserver.bat — venster open laten.
 
 
-ANDERE COM-POORT?
-─────────────────
-Als de weegbrug niet op COM5 hangt, maak een bestand start-met-com.bat:
-
-  @echo off
-  set WEEGBRUG_COM=COM3
-  call start-weegserver.bat
-
-
-HULP NODIG?
-───────────
-Neem contact op met uw leverancier / beheerder.
-
-
-════════════════════════════════════════════════════════
+GEEN STANDAARD SLEUTEL
+──────────────────────
+Elke klant heeft een eigen sleutel. Deze staat niet in de software
+maar alleen in .env (weegbrug) en in de app (kantoor).

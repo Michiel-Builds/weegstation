@@ -5,7 +5,7 @@ const log = require("electron-log");
 
 log.transports.file.level = "info";
 log.transports.console.level = "info";
-log.info("=== Bulters Weegsysteem opgestart ===");
+log.info("=== WeegStation opgestart ===");
 log.info("App packaged:", app.isPackaged);
 log.info("App path:", app.getAppPath());
 log.info("__dirname:", __dirname);
@@ -27,6 +27,8 @@ let wegenWindow = null;
 let splashWindow = null;
 
 const POSITIE_BESTAND = () => path.join(app.getPath("userData"), "posities.json");
+const AUTH_BESTAND = () => path.join(app.getPath("userData"), "auth.json");
+const BEDRIJF_BESTAND = () => path.join(app.getPath("userData"), "bedrijf.json");
 
 function laadPosities() {
   try {
@@ -184,7 +186,7 @@ function createSplash() {
 
 function createWindow() {
   log.info("→ createWindow() gestart");
-  mainWindow = maakVenster("", "Bulters Weegsysteem | Metaalrecycling Bulters", 1400, 900);
+  mainWindow = maakVenster("", "WeegStation", 1400, 900);
   log.info("← createWindow() klaar, mainWindow:", mainWindow ? "CREATED" : "NULL");
 }
 
@@ -194,7 +196,7 @@ function openBonVenster() {
     bonWindow.focus();
     return;
   }
-  bonWindow = maakVenster("bon", "Bulters Weegsysteem — Bon-venster", 1100, 850);
+  bonWindow = maakVenster("bon", "WeegStation — Bon-venster", 1100, 850);
   bonWindow.on("closed", () => { bonWindow = null; });
 }
 
@@ -204,7 +206,7 @@ function openWegenVenster() {
     wegenWindow.focus();
     return;
   }
-  wegenWindow = maakVenster("wegen", "Bulters Weegsysteem — Wegen-venster", 1000, 850);
+  wegenWindow = maakVenster("wegen", "WeegStation — Wegen-venster", 1000, 850);
   wegenWindow.on("closed", () => { wegenWindow = null; });
 }
 
@@ -256,6 +258,48 @@ ipcMain.handle("sla-positie", (event, { vensterType, positie }) => {
   }
 });
 
+ipcMain.handle("laad-auth", () => {
+  try {
+    if (fs.existsSync(AUTH_BESTAND())) {
+      return JSON.parse(fs.readFileSync(AUTH_BESTAND(), "utf-8"));
+    }
+  } catch (err) {
+    log.error("Auth laden mislukt:", err);
+  }
+  return null;
+});
+
+ipcMain.handle("bewaar-auth", (event, config) => {
+  try {
+    fs.writeFileSync(AUTH_BESTAND(), JSON.stringify(config, null, 2));
+    return true;
+  } catch (err) {
+    log.error("Auth bewaren mislukt:", err);
+    throw err;
+  }
+});
+
+ipcMain.handle("laad-bedrijf", () => {
+  try {
+    if (fs.existsSync(BEDRIJF_BESTAND())) {
+      return JSON.parse(fs.readFileSync(BEDRIJF_BESTAND(), "utf-8"));
+    }
+  } catch (err) {
+    log.error("Bedrijfconfig laden mislukt:", err);
+  }
+  return null;
+});
+
+ipcMain.handle("bewaar-bedrijf", (event, config) => {
+  try {
+    fs.writeFileSync(BEDRIJF_BESTAND(), JSON.stringify(config, null, 2));
+    return true;
+  } catch (err) {
+    log.error("Bedrijfconfig bewaren mislukt:", err);
+    throw err;
+  }
+});
+
 // Error handler van preload
 ipcMain.on("preload-error", (event, errorMsg) => {
   log.error("✗ PRELOAD ERROR:", errorMsg);
@@ -273,7 +317,7 @@ autoUpdater.on("update-available", function (info) {
     dialog.showMessageBox(mainWindow, {
       type: "info",
       title: "Update beschikbaar",
-      message: "Bulters Weegsysteem versie " + info.version + " is beschikbaar.",
+      message: "WeegStation versie " + info.version + " is beschikbaar.",
       detail: "De update wordt nu gedownload.",
       buttons: ["OK"]
     });
@@ -338,7 +382,7 @@ app.whenReady().then(function () {
     }, 5000);
   } catch (err) {
     log.error("KRITIEKE FOUT bij app startup:", err);
-    dialog.showErrorBox("Startup Fout", "Bulters Weegsysteem kon niet starten:\n" + err.message);
+    dialog.showErrorBox("Startup Fout", "WeegStation kon niet starten:\n" + err.message);
     app.quit();
   }
 }).catch(function (err) {
@@ -362,7 +406,7 @@ process.on("uncaughtException", function (err) {
   if (mainWindow && !mainWindow.isDestroyed()) {
     dialog.showErrorBox(
       "Kritieke Fout",
-      "Bulters Weegsysteem is gecrashd:\n" + err.message + "\n\nZie log bestanden voor details."
+      "WeegStation is gecrashd:\n" + err.message + "\n\nZie log bestanden voor details."
     );
   }
   app.quit();
@@ -376,5 +420,5 @@ process.on("unhandledRejection", function (reason, promise) {
 });
 
 app.on("before-quit", function () {
-  log.info("=== Bulters Weegsysteem wordt afgesloten ===");
+  log.info("=== WeegStation wordt afgesloten ===");
 });

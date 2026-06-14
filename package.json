@@ -1,7 +1,7 @@
 {
-  "name": "bulters-newton-app",
-  "version": "2.0.2",
-  "description": "Bulters Weegsysteem - voorraad- en weegsysteem voor Metaalrecycling Bulters",
+  "name": "weegstation-app",
+  "version": "3.0.0",
+  "description": "WeegStation - professioneel weeg- en voorraadsysteem voor metaalrecycling",
   "author": "Michiel Bulters",
   "main": "electron.cjs",
   "scripts": {
@@ -33,9 +33,9 @@
     "vite": "^5.0.0"
   },
   "build": {
-    "appId": "nl.bulters.newton",
-    "productName": "Bulters Weegsysteem",
-    "copyright": "Copyright © 2026 Bulters Metaalrecycling",
+    "appId": "nl.weegstation.app",
+    "productName": "WeegStation",
+    "copyright": "Copyright © 2026 WeegStation",
     "asarUnpack": [
       "dist/**/*",
       "preload.js",
@@ -58,7 +58,7 @@
     "nsis": {
       "perMachine": false,
       "oneClick": false,
-      "shortcutName": "Bulters Weegsysteem",
+      "shortcutName": "WeegStation",
       "createDesktopShortcut": true,
       "installerLanguages": [
         "nl_NL",
@@ -70,11 +70,10 @@
       "include": "build/installer.nsh"
     },
     "publish": {
-      "private": true,
       "provider": "github",
       "releaseType": "release",
       "owner": "Michiel-Builds",
-      "repo": "newton-plus"
+      "repo": "weegstation"
     },
     "files": [
       "dist/**/*",
@@ -97,6 +96,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Michiel-Builds/newton-plus.git"
+    "url": "git+https://github.com/Michiel-Builds/weegstation.git"
   }
 }

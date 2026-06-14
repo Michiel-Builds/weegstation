@@ -1,15 +1,3 @@
-export const APP_NAAM = "Bulters Weegsysteem";
-export const BEDRIJF_NAAM = "Metaalrecycling Bulters";
-
-export const GEBRUIKERS = [
-  {
-    gebruikersnaam: "admin",
-    wachtwoordHash: "abcf0cddf6bb3e865a677bf37ba01ee02fd83155a5a51ff848cfb46fd5b45f50",
-    naam: "Beheerder",
-    rol: "Admin",
-  },
-];
-
 export const MATERIALEN = [
   { id: 1,  naam: "Koper",          kleur: "#4caf7d", tag: "tag-koper"          },
   { id: 2,  naam: "Aluminium",      kleur: "#7ab4f5", tag: "tag-aluminium"      },

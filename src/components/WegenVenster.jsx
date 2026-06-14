@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import WeegPagina from "./WeegPagina";
 import { getInitKlanten } from "../data/klanten";
-import { APP_NAAM, BEDRIJF_NAAM, INIT_PRIJZEN, INIT_OPBRENGST } from "../data/stamdata";
+import { INIT_PRIJZEN, INIT_OPBRENGST } from "../data/stamdata";
+import { PRODUCT_NAAM } from "../data/product";
+import { laadBedrijfConfig } from "../utils/bedrijfConfig";
 import { laadPrijzenState } from "../utils/prijzen";
-import { laadServerIP, magWeegserverVerbinden, maakWeegserverWsUrl } from "../utils/weegserver";
+import { laadServerIP, magWeegserverVerbinden, maakWeegserverWsUrl, laadServerKey } from "../utils/weegserver";
 
 import { WEGINGEN_LS_KEY as WEGINGEN_KEY, laadWegingenUitLS } from "../utils/wegingen";
-const KLANTEN_KEY   = "newton-klanten";
+const KLANTEN_KEY   = "ws-klanten";
 
 function laadLS(key, fallback) {
   try {
@@ -23,9 +25,15 @@ export default function WegenVenster() {
   const [gewichtWeegbrug, setGewichtWeegbrug] = useState(null);
   const [gewichtLoods, setGewichtLoods] = useState(null);
   const [serverVerbonden, setServerVerbonden] = useState(false);
+  const [bedrijfsnaam, setBedrijfsnaam] = useState("");
   const wsRef = useRef(null);
 
-  useEffect(() => { document.title = `${APP_NAAM} — Wegen-venster`; }, []);
+  useEffect(() => {
+    document.title = `${PRODUCT_NAAM} — Wegen-venster`;
+    laadBedrijfConfig().then(cfg => {
+      if (cfg?.bedrijfsnaam) setBedrijfsnaam(cfg.bedrijfsnaam);
+    });
+  }, []);
 
   useEffect(() => {
     if (!magWeegserverVerbinden()) return;
@@ -33,7 +41,7 @@ export default function WegenVenster() {
     function verbind() {
       let ws;
       try {
-        ws = new WebSocket(maakWeegserverWsUrl(ip));
+        ws = new WebSocket(maakWeegserverWsUrl(ip, laadServerKey()));
       } catch (e) {
         setServerVerbonden(false);
         return;
@@ -92,11 +100,13 @@ export default function WegenVenster() {
     else window.close();
   }
 
+  const naam = bedrijfsnaam || PRODUCT_NAAM;
+
   return (
     <div className="mw-layout">
       <div className="topbar">
         <div className="page-title">⚖ Wegen-venster</div>
-        <div className="topbar-center">{BEDRIJF_NAAM}</div>
+        <div className="topbar-center">{bedrijfsnaam || "—"}</div>
         <div className="topbar-right">
           <span className="status-pill">
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: serverVerbonden ? "var(--green)" : "var(--red)", display: "inline-block" }} />
@@ -116,6 +126,7 @@ export default function WegenVenster() {
           prijzen={initPrijzen.prijzen}
           opbrengst={initPrijzen.opbrengst}
           klanten={klanten}
+          bedrijfsnaam={naam}
         />
       </div>
     </div>

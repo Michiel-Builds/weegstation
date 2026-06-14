@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { PRODUCT_NAAM } from "../data/product";
 
 function fmt(n) {
   return Number(n).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -8,7 +9,7 @@ function fmtI(n) {
   return Number(n).toLocaleString("nl-NL", { maximumFractionDigits: 0 });
 }
 
-export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaalKg, totaalEuro }) {
+export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaalKg, totaalEuro, bedrijfsnaam = "WeegStation" }) {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -23,13 +24,13 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(46, 125, 50); // var(--accent)
-  doc.text("Metaalrecycling Bulters", pageW / 2, y, { align: "center" });
+  doc.text(bedrijfsnaam, pageW / 2, y, { align: "center" });
 
   y += 6;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   doc.setTextColor(100);
-  doc.text("Bulters B.V. · Dit document is automatisch gegenereerd", pageW / 2, y, { align: "center" });
+  doc.text(bedrijfsnaam + " · Dit document is automatisch gegenereerd", pageW / 2, y, { align: "center" });
 
   // === BON-NUMMER + DATUM ===
   y += 12;
@@ -167,7 +168,7 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
   doc.setFontSize(8);
   doc.setTextColor(150);
   doc.text(
-    "Bulters Weegsysteem · Metaalrecycling Bulters · Bon " + bonnummer + " · " + new Date().toLocaleString("nl-NL"),
+    PRODUCT_NAAM + " · " + bedrijfsnaam + " · Bon " + bonnummer + " · " + new Date().toLocaleString("nl-NL"),
     pageW / 2,
     pageH - 8,
     { align: "center" }

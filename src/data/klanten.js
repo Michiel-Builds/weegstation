@@ -1,9 +1,9 @@
 // =============================================
 // KLANTEN-DATA & HOOK
-// Opslag in localStorage (sleutel: newton-klanten)
+// Opslag in localStorage (sleutel: ws-klanten)
 // =============================================
 
-const STORAGE_KEY = "newton-klanten";
+const STORAGE_KEY = "ws-klanten";
 
 function laadKlanten() {
   try {

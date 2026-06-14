@@ -1,5 +1,5 @@
 // ===== Bon-nummer (dagelijkse teller, begint elke dag op 1) =====
-const BON_TELLER_KEY = "newton-bon-teller";
+const BON_TELLER_KEY = "ws-bon-teller";
 
 function bonDatumKey() {
   const d = new Date();
@@ -102,7 +102,7 @@ export function initWegingen() {
 }
 
 // ===== Print Bon =====
-export function printBon({ bonnummer, klant, klantType, regels, totaalKg, totaalEuro }) {
+export function printBon({ bonnummer, klant, klantType, regels, totaalKg, totaalEuro, bedrijfsnaam = "WeegStation", productNaam = "WeegStation" }) {
   const datum = new Date().toLocaleDateString("nl-NL");
   const tijd = new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
 
@@ -151,7 +151,7 @@ th { background: #f5f5f5; font-weight: 600; }
 </style>
 </head>
 <body>
-<h1>Metaalrecycling Bulters</h1>
+<h1>${bedrijfsnaam}</h1>
 <h2>Bon ${bonnummer} — ${datum} ${tijd}</h2>
 <div class="klant-info">
 <table>
@@ -176,7 +176,7 @@ ${klantRegelHTML}
 Totaal: ${totaalKg.toLocaleString("nl-NL")} kg — € ${totaalEuro.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 </div>
 <div class="footer">
-Metaalrecycling Bulters · Bulters B.V. · Dit document is automatisch gegenereerd
+${productNaam} · ${bedrijfsnaam} · Dit document is automatisch gegenereerd
 </div>
 <script>window.onload = function() { setTimeout(() => window.print(), 200); };</script>
 </body>

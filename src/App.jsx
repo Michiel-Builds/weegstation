@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./styles.css";
 
-import { APP_NAAM, BEDRIJF_NAAM, MATERIALEN, INIT_PRIJZEN, INIT_OPBRENGST, OPBRENGST_KORTING } from "./data/stamdata";
+import { PRODUCT_NAAM } from "./data/product";
+import { MATERIALEN, INIT_PRIJZEN, INIT_OPBRENGST, OPBRENGST_KORTING } from "./data/stamdata";
 import {
   getCachedPrijzenState, bewaarPrijzenInLS, bewaarOpbrengstInLS,
   inkoopVanOpbrengst, prijzenVanOpbrengst,
@@ -13,6 +14,7 @@ import {
 import { getInitKlanten, getZakelijk, getParticulier } from "./data/klanten";
 
 import LoginScherm from "./components/LoginScherm";
+import EersteSetup from "./components/EersteSetup";
 import ChauffeurScherm from "./components/ChauffeurScherm";
 import WeegPagina from "./components/WeegPagina";
 import XMLImport from "./components/XMLImport";
@@ -22,11 +24,17 @@ import Calculator from "./components/Calculator";
 import KlantenSidebar from "./components/KlantenSidebar";
 import MultiWindowButtons from "./components/MultiWindowButtons";
 import FormulierenPagina from "./components/FormulierenPagina";
-import { laadServerIP, bewaarServerIP, magWeegserverVerbinden, maakWeegserverWsUrl } from "./utils/weegserver";
+import InstellingenPagina from "./components/InstellingenPagina";
+import { laadServerIP, bewaarServerIP, laadServerKey, bewaarServerKey, magWeegserverVerbinden, maakWeegserverWsUrl } from "./utils/weegserver";
+import { heeftAuthConfig } from "./utils/authStore";
+import { laadBedrijfConfig, heeftBedrijfConfig } from "./utils/bedrijfConfig";
+import { pasThemaToe } from "./utils/thema";
+import { migreerOpslagSleutels } from "./utils/migratie";
 
 import { WEGINGEN_LS_KEY, laadWegingenUitLS, bewaarWegingenInLS } from "./utils/wegingen";
 
 export default function App() {
+  const [authStatus, setAuthStatus] = useState("laden");
   const [gebruiker, setGebruiker] = useState(null);
   const [pagina, setPagina] = useState("dashboard");
   const [wegingen, setWegingen] = useState(() => laadWegingenUitLS());
@@ -41,11 +49,25 @@ export default function App() {
   const [gewichtLoods, setGewichtLoods] = useState(null);
   const [serverVerbonden, setServerVerbonden] = useState(false);
   const [serverIP, setServerIP] = useState(() => laadServerIP());
+  const [serverKey, setServerKey] = useState(() => laadServerKey());
+  const [bedrijf, setBedrijf] = useState(null);
   const [klanten, setKlanten] = useState(() => getInitKlanten());
   const wsRef = useRef(null);
 
   useEffect(() => {
-    document.title = `${APP_NAAM} | ${BEDRIJF_NAAM}`;
+    migreerOpslagSleutels();
+    Promise.all([heeftAuthConfig(), heeftBedrijfConfig()]).then(([auth, bedrijfOk]) => {
+      setAuthStatus(auth && bedrijfOk ? "klaar" : "setup");
+    });
+    laadBedrijfConfig().then(cfg => {
+      if (cfg) {
+        setBedrijf(cfg);
+        pasThemaToe(cfg);
+        document.title = `${PRODUCT_NAAM} | ${cfg.bedrijfsnaam}`;
+      } else {
+        document.title = PRODUCT_NAAM;
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -53,15 +75,16 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!gebruiker) return;
+    if (!gebruiker || authStatus !== "klaar") return;
+    if (!serverKey.trim()) return;
     if (!magWeegserverVerbinden()) {
       console.warn("WAARSCHUWING: App draait niet in lokaal netwerk. Server-verbinding uitgeschakeld.");
       return;
     }
-    function verbindServer(ip) {
+    function verbindServer(ip, key) {
       let ws;
       try {
-        ws = new WebSocket(maakWeegserverWsUrl(ip));
+        ws = new WebSocket(maakWeegserverWsUrl(ip, key));
       } catch (e) {
         console.error("WebSocket constructie fout:", e);
         setServerVerbonden(false);
@@ -101,7 +124,7 @@ export default function App() {
       ws.onclose = () => { 
         console.warn("Server verbinding verbroken. Herverbinden in 5 seconden...");
         setServerVerbonden(false); 
-        setTimeout(() => gebruiker && verbindServer(ip), 5000); 
+        setTimeout(() => gebruiker && verbindServer(ip, key), 5000); 
       };
       ws.onerror = (err) => {
         console.error("WebSocket fout:", err);
@@ -109,9 +132,9 @@ export default function App() {
         toonToast("⚠ Server niet bereikbaar");
       };
     }
-    verbindServer(serverIP);
+    verbindServer(serverIP, serverKey);
     return () => { if (wsRef.current) wsRef.current.close(); };
-  }, [gebruiker, serverIP]);
+  }, [gebruiker, serverIP, serverKey, authStatus]);
 
   useEffect(() => {
     bewaarWegingenInLS(wegingen);
@@ -120,6 +143,10 @@ export default function App() {
   useEffect(() => {
     bewaarServerIP(serverIP);
   }, [serverIP]);
+
+  useEffect(() => {
+    bewaarServerKey(serverKey);
+  }, [serverKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -134,10 +161,10 @@ export default function App() {
       if (e.key === BON_OMZET_LS_KEY) verversBonOmzet();
     };
     window.addEventListener("storage", handler);
-    window.addEventListener("newton-bon-omzet-update", verversBonOmzet);
+    window.addEventListener("ws-bon-omzet-update", verversBonOmzet);
     return () => {
       window.removeEventListener("storage", handler);
-      window.removeEventListener("newton-bon-omzet-update", verversBonOmzet);
+      window.removeEventListener("ws-bon-omzet-update", verversBonOmzet);
     };
   }, []);
 
@@ -191,6 +218,20 @@ export default function App() {
   const vandaag = wegingen.filter(w => w.datum === new Date().toLocaleDateString("nl-NL"));
   const kanPrijzen = gebruiker && (gebruiker.rol === "Admin" || gebruiker.rol === "Prijzen");
 
+  if (authStatus === "laden") return null;
+  if (authStatus === "setup") {
+    return (
+      <EersteSetup
+        onKlaar={(cfg) => {
+          setBedrijf(cfg);
+          pasThemaToe(cfg);
+          document.title = `${PRODUCT_NAAM} | ${cfg.bedrijfsnaam}`;
+          setAuthStatus("klaar");
+          setServerKey(laadServerKey());
+        }}
+      />
+    );
+  }
   if (!gebruiker) return <LoginScherm onLogin={setGebruiker} />;
   if (gebruiker.rol === "Chauffeur") return (
     <>
@@ -201,6 +242,7 @@ export default function App() {
         gewichtLoods={gewichtLoods}
         serverVerbonden={serverVerbonden}
         onWeging={verstuurWeging}
+        bedrijfsnaam={bedrijf?.bedrijfsnaam || PRODUCT_NAAM}
       />
       {toast && <div className="toast">{toast}</div>}
     </>
@@ -213,6 +255,7 @@ export default function App() {
     { key: "bon", icon: "📄", label: "Bon maken" },
     { key: "wegingen", icon: "☰", label: "Overzicht" },
     ...(kanPrijzen ? [{ key: "prijzen", icon: "€", label: "Prijzen" }] : []),
+    ...(kanPrijzen ? [{ key: "instellingen", icon: "⚙", label: "Instellingen" }] : []),
     { key: "rapport", icon: "📊", label: "Rapport" },
     { key: "import", icon: "📥", label: "XML Import" },
     { key: "formulieren", icon: "📋", label: "Formulieren" },
@@ -225,7 +268,8 @@ export default function App() {
     prijzen: "Prijsbeheer",
     rapport: "Rapportage",
     import: "XML Import",
-    formulieren: "Formulieren"
+    formulieren: "Formulieren",
+    instellingen: "Instellingen",
   };
 
   return (
@@ -233,8 +277,8 @@ export default function App() {
       <div className="app">
         <aside className="sidebar">
           <div className="sidebar-logo">
-            <div className="logo-label">{BEDRIJF_NAAM}</div>
-            <div className="logo-name">{APP_NAAM}</div>
+            <div className="logo-label">{bedrijf?.bedrijfsnaam || "—"}</div>
+            <div className="logo-name">{PRODUCT_NAAM}</div>
           </div>
           <nav className="nav">
             {navItems.map(item => (
@@ -269,7 +313,7 @@ export default function App() {
         <main className="main">
           <div className="topbar">
             <div className="page-title">{titels[pagina]}</div>
-            <div className="topbar-center">{BEDRIJF_NAAM}</div>
+            <div className="topbar-center">{bedrijf?.bedrijfsnaam}</div>
             <div className="topbar-right">
               <MultiWindowButtons />
               <div className="status-pill">
@@ -285,15 +329,30 @@ export default function App() {
                 <div className="server-balk">
                   <div className={`server-dot ${serverVerbonden ? "verbonden" : "verbroken"}`} />
                   <span style={{ color: serverVerbonden ? "var(--green)" : "var(--red)" }}>
-                    {serverVerbonden ? "Live verbonden met weegserver" : "Verbinding verbroken — herverbinden..."}
+                    {serverVerbonden
+                      ? "Live verbonden met weegserver"
+                      : !serverKey.trim()
+                        ? "Vul weegserver-sleutel in"
+                        : "Verbinding verbroken — herverbinden..."}
                   </span>
                   {!serverVerbonden && (
-                    <input
-                      className="server-ip-input"
-                      value={serverIP}
-                      onChange={e => setServerIP(e.target.value)}
-                      placeholder="192.168.1.100"
-                    />
+                    <div className="server-instellingen">
+                      <input
+                        className="server-ip-input"
+                        value={serverIP}
+                        onChange={e => setServerIP(e.target.value)}
+                        placeholder="IP weegbrug"
+                        title="IP-adres weegbrug-PC"
+                      />
+                      <input
+                        className="server-ip-input server-key-input"
+                        type="password"
+                        value={serverKey}
+                        onChange={e => setServerKey(e.target.value)}
+                        placeholder="Weegserver-sleutel"
+                        title="Zelfde sleutel als WEEGSERVER_KEY op weegbrug-PC"
+                      />
+                    </div>
                   )}
                 </div>
                 <div className="live-gewicht-balk">
@@ -475,7 +534,14 @@ export default function App() {
             {pagina === "rapport" && (
               <RapportPagina wegingen={wegingen} materialen={MATERIALEN} />
             )}
-            {pagina === "bon" && <BonBouwer prijzen={prijzen} wegingen={wegingen} klanten={klanten} />}
+            {pagina === "bon" && (
+              <BonBouwer
+                prijzen={prijzen}
+                wegingen={wegingen}
+                klanten={klanten}
+                bedrijfsnaam={bedrijf?.bedrijfsnaam || PRODUCT_NAAM}
+              />
+            )}
             {pagina === "wegen" && (
               <WeegPagina
                 gewichtWeegbrug={gewichtWeegbrug}
@@ -486,6 +552,7 @@ export default function App() {
                 prijzen={prijzen}
                 opbrengst={opbrengst}
                 klanten={klanten}
+                bedrijfsnaam={bedrijf?.bedrijfsnaam || PRODUCT_NAAM}
               />
             )}
             {pagina === "import" && (
@@ -494,7 +561,20 @@ export default function App() {
                 <div style={{ padding: 20 }}><XMLImport onImport={importeerWegingen} /></div>
               </div>
             )}
-            {pagina === "formulieren" && <FormulierenPagina klanten={klanten} />}
+            {pagina === "formulieren" && (
+              <FormulierenPagina klanten={klanten} bedrijfsnaam={bedrijf?.bedrijfsnaam || ""} />
+            )}
+            {pagina === "instellingen" && (
+              <InstellingenPagina
+                bedrijf={bedrijf}
+                onBijgewerkt={(cfg) => {
+                  setBedrijf(cfg);
+                  pasThemaToe(cfg);
+                  document.title = `${PRODUCT_NAAM} | ${cfg.bedrijfsnaam}`;
+                }}
+                onToast={toonToast}
+              />
+            )}
           </div>
         </main>
       </div>

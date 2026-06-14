@@ -1,6 +1,6 @@
 import { opbrengstVanInkoop } from "./prijzen";
 
-export const OPBRENGST_DAG_LS_KEY = "newton-opbrengst-dag";
+export const OPBRENGST_DAG_LS_KEY = "ws-opbrengst-dag";
 
 export function vandaagDatumKey(datum = new Date()) {
   return datum.toLocaleDateString("nl-NL");

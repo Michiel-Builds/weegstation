@@ -8,7 +8,7 @@ import {
   printKalibratieTest, printBegeleidingsbrief
 } from "../utils/formulierPrint";
 import { laadKalibratie, bewaarKalibratie } from "../utils/formulierKalibratie";
-import { BULTERS_PARTIJ } from "../data/bultersBedrijf";
+import { maakStandaardPartij } from "../data/standaardPartij";
 import { zoekKlanten } from "../data/klanten";
 import FormulierVoorbeeld from "./FormulierVoorbeeld";
 
@@ -75,7 +75,7 @@ function PartijVelden({ partij, onChange, titel }) {
   );
 }
 
-export default function FormulierenPagina({ klanten = [] }) {
+export default function FormulierenPagina({ klanten = [], bedrijfsnaam = "" }) {
   const [actieveTab, setActieveTab] = useState("begeleidingsbrief");
   const [data, setData] = useState(() => laadFormulierData());
   const [klantSelectie, setKlantSelectie] = useState({});
@@ -158,7 +158,7 @@ export default function FormulierenPagina({ klanten = [] }) {
 
   function resetFormulier() {
     if (!confirm("Alle ingevulde gegevens wissen en opnieuw beginnen?")) return;
-    setData(maakInitFormulierData());
+    setData(maakInitFormulierData(bedrijfsnaam));
     setKlantSelectie({});
     toonToast("Formulier gereset");
   }
@@ -344,8 +344,8 @@ export default function FormulierenPagina({ klanten = [] }) {
                 <span>Partijen</span>
                 <button
                   className="form-sec-btn"
-                  onClick={() => updatePartij("afzender", { ...BULTERS_PARTIJ })}
-                >Bulters als afzender</button>
+                  onClick={() => updatePartij("afzender", maakStandaardPartij(bedrijfsnaam))}
+                >{bedrijfsnaam ? `${bedrijfsnaam} als afzender` : "Bedrijf als afzender"}</button>
               </div>
               <PartijVelden
                 titel="Afzender"

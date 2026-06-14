@@ -1,4 +1,4 @@
-const STORAGE_KEY = "newton-formulier-kalibratie";
+const STORAGE_KEY = "ws-formulier-kalibratie";
 
 const DEFAULTS = {
   begeleidingsbrief: { offsetBoven: 10, offsetLinks: 0, fontSize: 10, bondingRand: true },

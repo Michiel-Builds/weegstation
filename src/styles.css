@@ -224,6 +224,16 @@ td { padding: 12px 16px; font-size: 13px; }
 .server-dot.verbroken { background: var(--red); }
 .server-ip-input { background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-family: var(--mono); font-size: 12px; padding: 3px 8px; border-radius: 4px; outline: none; width: 140px; margin-left: auto; }
 .server-ip-input:focus { border-color: var(--accent2); }
+.server-instellingen { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+.server-key-input { width: 180px; }
+.setup-hint { font-size: 12px; color: var(--muted); line-height: 1.55; margin-bottom: 14px; }
+.setup-sleutel-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin: 16px 0; }
+.setup-sleutel { display: block; font-family: var(--mono); font-size: 13px; color: var(--accent2); word-break: break-all; margin: 8px 0 10px; }
+.setup-kopie-btn {
+  background: none; border: 1px solid var(--border); color: var(--muted); font-size: 11px;
+  padding: 5px 10px; border-radius: 5px; cursor: pointer;
+}
+.setup-kopie-btn:hover { border-color: var(--accent2); color: var(--text); }
 .weeg-pagina { display: grid; grid-template-columns: 1fr 400px; gap: 20px; }
 .weeg-paneel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
 .weeg-paneel-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
@@ -930,3 +940,25 @@ body table input[type="number"] {
 .materiaal-autocomplete-dropdown {
   pointer-events: auto !important;
 }
+
+/* === Setup & instellingen === */
+.setup-card { max-width: 480px; }
+.instellingen-body { padding: 20px 24px 28px; max-width: 480px; }
+.thema-kiezer { display: flex; gap: 8px; margin-bottom: 16px; }
+.thema-btn {
+  flex: 1; padding: 10px 16px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text); cursor: pointer; font-size: 13px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.thema-btn:hover { border-color: var(--accent); }
+.thema-btn.actief { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--surface2)); font-weight: 600; }
+.kleur-rij { display: flex; gap: 16px; align-items: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
+.kleur-input { width: 56px; height: 36px; padding: 2px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: var(--surface2); }
+.setup-hint { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 12px 0 20px; }
+.setup-sleutel-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; margin: 16px 0; }
+.setup-sleutel { display: block; font-family: var(--mono); font-size: 13px; word-break: break-all; margin: 6px 0; color: var(--accent2); }
+.setup-kopie-btn {
+  margin-top: 8px; padding: 6px 12px; font-size: 12px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer;
+}
+.setup-kopie-btn:hover { border-color: var(--accent); }

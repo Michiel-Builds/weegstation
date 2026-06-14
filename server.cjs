@@ -1,5 +1,5 @@
 /**
- * Bulters Weegsysteem - Lokale Weegbrug Server
+ * WeegStation - Lokale Weegbrug Server
  * Draait op de pc bij de weegbrug (Windows 7+)
  * Leest gewicht van Bilanciai via RS-232 (COM-poort)
  * Stuurt live gewicht door naar de app via WebSocket
@@ -12,6 +12,24 @@ const fs         = require('fs');
 const path       = require('path');
 const os         = require('os');
 const { parseAllowedIps, isIpAllowed, verifyWsAuth } = require('./server/security.cjs');
+
+function laadDotEnv(pad) {
+  try {
+    if (!fs.existsSync(pad)) return;
+    const inhoud = fs.readFileSync(pad, 'utf8');
+    inhoud.split('\n').forEach(function (regel) {
+      const m = regel.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+      if (!m || m[1].startsWith('#')) return;
+      if (!process.env[m[1]]) {
+        process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim();
+      }
+    });
+  } catch (e) {
+    console.error('Kon .env niet laden:', e.message);
+  }
+}
+
+laadDotEnv(path.join(__dirname, '.env'));
 
 // --- Configuratie
 const CONFIG = {
@@ -27,9 +45,19 @@ const CONFIG = {
   LOODS_STOP_BITS:    1,
   LOODS_PARITY:       'none',
   NEWTON_XML_MAP: process.env.NEWTON_XML_MAP || 'C:\\NewTon\\XMLExport\\',
-  API_KEY:        process.env.WEEGSERVER_KEY || 'BultersWs-8kM2pQ9v',
+  API_KEY:        process.env.WEEGSERVER_KEY || '',
   ALLOWED_IPS:    parseAllowedIps(process.env.WEEGSERVER_ALLOWED_IPS),
 };
+
+if (!CONFIG.API_KEY) {
+  console.error('');
+  console.error('FOUT: WEEGSERVER_KEY ontbreekt.');
+  console.error('Maak een .env bestand in deze map met bijvoorbeeld:');
+  console.error('  WEEGSERVER_KEY=jouw-geheime-sleutel');
+  console.error('(Zelfde sleutel als in WeegStation op kantoor-PC)');
+  console.error('');
+  process.exit(1);
+}
 
 // --- State
 let huidigGewichtWeegbrug = null;
@@ -309,7 +337,7 @@ function startXMLWatcher() {
 
 // --- Start alles op
 httpServer.listen(CONFIG.HTTP_PORT, () => {
-  log('=== Bulters Weegsysteem - Weegserver v1.0 ===');
+  log('=== WeegStation - Weegserver v3.0 ===');
   log('Server gestart op poort ' + CONFIG.HTTP_PORT);
   log('Lokaal IP: ' + getLocalIP() + ':' + CONFIG.HTTP_PORT);
   if (CONFIG.ALLOWED_IPS) {
