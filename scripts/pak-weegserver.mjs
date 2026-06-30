@@ -22,9 +22,11 @@ mkdirSync(outDir, { recursive: true });
 
 let server = readFileSync(join(root, "server.cjs"), "utf8");
 server = server.replace(/\.\/server\/security\.cjs/g, "./security.cjs");
+server = server.replace(/\.\/server\/stoplicht\.cjs/g, "./stoplicht.cjs");
 writeFileSync(join(outDir, "server.cjs"), server);
 
 cpSync(join(root, "server", "security.cjs"), join(outDir, "security.cjs"));
+cpSync(join(root, "server", "stoplicht.cjs"), join(outDir, "stoplicht.cjs"));
 cpSync(join(pkgDir, "package.json"), join(outDir, "package.json"));
 cpSync(join(pkgDir, "start-weegserver.bat"), join(outDir, "start-weegserver.bat"));
 cpSync(join(pkgDir, "LEESMIJ.txt"), join(outDir, "LEESMIJ.txt"));

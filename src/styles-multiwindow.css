@@ -14,20 +14,24 @@
 
 /* Multi-window knoppen in topbar */
 .btn-open-mw {
-  background: #212426;
-  color: #e8e4de;
-  border: 1px solid #2e3133;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface2, #212426);
+  color: var(--text, #e8e4de);
+  border: 1px solid var(--border, #2e3133);
   padding: 5px 10px;
   border-radius: 5px;
   cursor: pointer;
   font-size: 11px;
   font-weight: 600;
-  font-family: ui-monospace, "SF Mono", monospace;
+  font-family: var(--mono, ui-monospace, "SF Mono", monospace);
   margin-left: 6px;
   transition: all 0.15s;
   white-space: nowrap;
 }
+.btn-open-mw svg { display: block; }
 .btn-open-mw:hover {
-  background: #2d3137;
-  border-color: #2e7d32;
+  background: var(--surface, #2d3137);
+  border-color: var(--accent, #2e7d32);
 }

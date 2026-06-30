@@ -13,6 +13,13 @@ const path       = require('path');
 const os         = require('os');
 const { parseAllowedIps, isIpAllowed, verifyWsAuth } = require('./server/security.cjs');
 
+let maakStoplicht;
+try {
+  ({ maakStoplicht } = require('./stoplicht.cjs'));
+} catch (e) {
+  ({ maakStoplicht } = require('./server/stoplicht.cjs'));
+}
+
 function laadDotEnv(pad) {
   try {
     if (!fs.existsSync(pad)) return;
@@ -64,6 +71,14 @@ let huidigGewichtWeegbrug = null;
 let huidigGewichtLoods    = null;
 let wegingenBuffer        = [];
 let verbondenClients      = new Set();
+
+const stoplicht = maakStoplicht(process.env, log);
+
+function stuurWeegbrugGewicht(gewicht, extra) {
+  huidigGewichtWeegbrug = gewicht;
+  stoplicht.onGewicht(gewicht);
+  broadcast(Object.assign({ type: 'gewicht_weegbrug', gewicht, stabiel: gewicht > 0 }, extra || {}));
+}
 
 function log(msg) {
   const tijd = new Date().toLocaleTimeString('nl-NL');
@@ -121,7 +136,8 @@ const httpServer = http.createServer((req, res) => {
       loods:    huidigGewichtLoods,
       wegingen: wegingenBuffer.slice(0, 50),
       uptime:   process.uptime(),
-      versie:   '1.0.0',
+      versie:   '3.0.0',
+      stoplicht: stoplicht.getStatus(),
     }));
   } else if (req.url === '/gewicht') {
     res.end(JSON.stringify({
@@ -159,6 +175,7 @@ wss.on('connection', (ws, req) => {
     weegbrug: huidigGewichtWeegbrug,
     loods:    huidigGewichtLoods,
     wegingen: wegingenBuffer.slice(0, 50),
+    stoplicht: stoplicht.getStatus(),
   }));
 
   ws.on('message', (data) => {
@@ -166,6 +183,16 @@ wss.on('connection', (ws, req) => {
       const bericht = JSON.parse(data);
       if (bericht.type === 'registreer_weging') {
         registreerWeging(bericht.weging);
+      }
+      if (bericht.type === 'stoplicht_groen') {
+        stoplicht.naarGroen().then(function (res) {
+          ws.send(JSON.stringify({ type: 'stoplicht_bevestig', ok: res.ok, kleur: 'groen', fout: res.fout }));
+        });
+      }
+      if (bericht.type === 'stoplicht_rood') {
+        stoplicht.naarRood('handmatig').then(function (res) {
+          ws.send(JSON.stringify({ type: 'stoplicht_bevestig', ok: res.ok, kleur: 'rood', fout: res.fout }));
+        });
       }
     } catch(e) {}
   });
@@ -188,6 +215,8 @@ function broadcast(data) {
     }
   });
 }
+
+stoplicht.setBroadcast(broadcast);
 
 // --- Weging registreren
 function registreerWeging(weging) {
@@ -220,8 +249,7 @@ function startWeegbrugSerieel() {
     parser.on('data', (regel) => {
       const gewicht = parseBilanciai(regel);
       if (gewicht !== null && gewicht !== huidigGewichtWeegbrug) {
-        huidigGewichtWeegbrug = gewicht;
-        broadcast({ type: 'gewicht_weegbrug', gewicht, stabiel: gewicht > 0 });
+        stuurWeegbrugGewicht(gewicht);
       }
     });
 
@@ -303,8 +331,7 @@ function simuleerWeegbrug() {
     if (gewicht < 0) { gewicht = 0; richting = 1; }
     const afgerond = Math.round(gewicht / 20) * 20;
     if (afgerond !== huidigGewichtWeegbrug) {
-      huidigGewichtWeegbrug = afgerond;
-      broadcast({ type: 'gewicht_weegbrug', gewicht: afgerond, stabiel: true, simulatie: true });
+      stuurWeegbrugGewicht(afgerond, { simulatie: true, stabiel: true });
     }
   }, 500);
 }
@@ -346,6 +373,7 @@ httpServer.listen(CONFIG.HTTP_PORT, () => {
   startWeegbrugSerieel();
   startLoodsWeegsSchaalSerieel();
   startXMLWatcher();
+  stoplicht.init();
 });
 
 process.on('SIGINT', () => {

@@ -35,6 +35,17 @@ export function bewaarServerIP(ip) {
   } catch {}
 }
 
+export function stuurStoplicht(ws, kleur) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+  const type = kleur === "groen" ? "stoplicht_groen" : "stoplicht_rood";
+  try {
+    ws.send(JSON.stringify({ type }));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function magWeegserverVerbinden() {
   if (typeof window === "undefined") return false;
   if (navigator.userAgent?.includes("Electron")) return true;

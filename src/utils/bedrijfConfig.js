@@ -5,11 +5,26 @@ import {
 
 export const CONFIG_LS_KEY = "ws-bedrijf-config";
 
+export const DEFAULT_LMA_CONFIG = {
+  verwerkersnummer: "",
+  bedrijfsnummer: "",
+  kvk: "",
+  adres: "",
+  postcode: "",
+  plaats: "",
+  omgeving: "bto", // "bto" (test) of "productie"
+  pfxPad: "",
+  caPad: "",
+  certWachtwoord: "",
+  certVerloopt: "", // ISO-datum, voor verloop-herinnering
+};
+
 export const DEFAULT_BEDRIJF_CONFIG = {
   bedrijfsnaam: "",
   thema: "dark",
   accent: DEFAULT_ACCENT,
   accent2: DEFAULT_ACCENT2,
+  lma: { ...DEFAULT_LMA_CONFIG },
 };
 
 export async function laadBedrijfConfig() {
@@ -51,5 +66,23 @@ function normaliseer(cfg) {
     thema,
     accent: cfg.accent || defaults.accent,
     accent2: cfg.accent2 || defaults.accent2,
+    lma: normaliseerLma(cfg.lma),
+  };
+}
+
+function normaliseerLma(lma) {
+  const l = lma || {};
+  return {
+    verwerkersnummer: String(l.verwerkersnummer || "").trim(),
+    bedrijfsnummer: String(l.bedrijfsnummer || "").trim(),
+    kvk: String(l.kvk || "").trim(),
+    adres: String(l.adres || "").trim(),
+    postcode: String(l.postcode || "").trim(),
+    plaats: String(l.plaats || "").trim(),
+    omgeving: l.omgeving === "productie" ? "productie" : "bto",
+    pfxPad: String(l.pfxPad || "").trim(),
+    caPad: String(l.caPad || "").trim(),
+    certWachtwoord: String(l.certWachtwoord || ""),
+    certVerloopt: String(l.certVerloopt || "").trim(),
   };
 }

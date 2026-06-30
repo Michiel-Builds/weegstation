@@ -27,4 +27,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   laadBedrijfConfig: () => ipcRenderer.invoke("laad-bedrijf"),
   bewaarBedrijfConfig: (config) => ipcRenderer.invoke("bewaar-bedrijf", config),
+
+  // Duurzame opslag (bewaarplicht)
+  dataLaad: (key) => ipcRenderer.invoke("data-laad", key),
+  dataLaadAlles: (keys) => ipcRenderer.invoke("data-laad-alles", keys),
+  dataBewaar: (key, value) => ipcRenderer.invoke("data-bewaar", { key, value }),
+  dataExporteer: (opties) => ipcRenderer.invoke("data-exporteer", opties),
+
+  // LMA / AMICE
+  lmaExporteerXml: (opties) => ipcRenderer.invoke("lma-exporteer-xml", opties),
+  lmaMelden: (opties) => ipcRenderer.invoke("lma-melden", opties),
+  lmaStatusOpvragen: (opties) => ipcRenderer.invoke("lma-status-opvragen", opties),
+  lmaToetsAsn: (opties) => ipcRenderer.invoke("lma-toets-asn", opties),
+  lmaCertInfo: (opties) => ipcRenderer.invoke("lma-cert-info", opties),
 });

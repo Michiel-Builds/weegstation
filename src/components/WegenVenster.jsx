@@ -5,7 +5,7 @@ import { INIT_PRIJZEN, INIT_OPBRENGST } from "../data/stamdata";
 import { PRODUCT_NAAM } from "../data/product";
 import { laadBedrijfConfig } from "../utils/bedrijfConfig";
 import { laadPrijzenState } from "../utils/prijzen";
-import { laadServerIP, magWeegserverVerbinden, maakWeegserverWsUrl, laadServerKey } from "../utils/weegserver";
+import { laadServerIP, magWeegserverVerbinden, maakWeegserverWsUrl, laadServerKey, stuurStoplicht } from "../utils/weegserver";
 
 import { WEGINGEN_LS_KEY as WEGINGEN_KEY, laadWegingenUitLS } from "../utils/wegingen";
 const KLANTEN_KEY   = "ws-klanten";
@@ -26,6 +26,7 @@ export default function WegenVenster() {
   const [gewichtLoods, setGewichtLoods] = useState(null);
   const [serverVerbonden, setServerVerbonden] = useState(false);
   const [bedrijfsnaam, setBedrijfsnaam] = useState("");
+  const [stoplicht, setStoplicht] = useState({ kleur: "rood", enabled: false });
   const wsRef = useRef(null);
 
   useEffect(() => {
@@ -54,7 +55,9 @@ export default function WegenVenster() {
           if (data.type === "init") {
             if (data.weegbrug !== null && data.weegbrug !== undefined) setGewichtWeegbrug(data.weegbrug);
             if (data.loods !== null && data.loods !== undefined) setGewichtLoods(data.loods);
+            if (data.stoplicht) setStoplicht(data.stoplicht);
           }
+          if (data.type === "stoplicht") setStoplicht({ kleur: data.kleur, enabled: data.enabled });
           if (data.type === "gewicht_weegbrug") setGewichtWeegbrug(data.gewicht);
           if (data.type === "gewicht_loods") setGewichtLoods(data.gewicht);
         } catch (err) {}
@@ -95,6 +98,10 @@ export default function WegenVenster() {
     }
   }
 
+  function bedienStoplicht(kleur) {
+    stuurStoplicht(wsRef.current, kleur);
+  }
+
   function sluitVenster() {
     if (window.electronAPI) window.electronAPI.sluitHuidigVenster();
     else window.close();
@@ -127,6 +134,9 @@ export default function WegenVenster() {
           opbrengst={initPrijzen.opbrengst}
           klanten={klanten}
           bedrijfsnaam={naam}
+          stoplichtKleur={stoplicht.kleur}
+          stoplichtEnabled={stoplicht.enabled}
+          onStoplicht={bedienStoplicht}
         />
       </div>
     </div>

@@ -61,6 +61,8 @@ export function maakLegeKlant(klanten) {
     plaats: "",
     btw: "",
     kvk: "",
+    amiceBedrijfsnummer: "",
+    vihb: "",
     email: "",
     telefoon: "",
     legitimatieType: "",
@@ -127,7 +129,7 @@ export function importeerCSV(klanten, csvTekst) {
 
   const header = parseCSVRegel(regels[0]).map(h => h.toLowerCase().trim());
   const kolIndex = {};
-  ["naam", "type", "adres", "postcode", "plaats", "btw", "kvk", "email", "telefoon", "contactpersoon"].forEach(k => {
+  ["naam", "type", "adres", "postcode", "plaats", "btw", "kvk", "vihb", "email", "telefoon", "contactpersoon"].forEach(k => {
     const idx = header.findIndex(h => h === k || h.startsWith(k));
     if (idx !== -1) kolIndex[k] = idx;
   });
@@ -155,6 +157,7 @@ export function importeerCSV(klanten, csvTekst) {
       plaats: velden[kolIndex.plaats]?.trim() || "",
       btw: velden[kolIndex.btw]?.trim() || "",
       kvk: velden[kolIndex.kvk]?.trim() || "",
+      vihb: velden[kolIndex.vihb]?.trim() || "",
       email: velden[kolIndex.email]?.trim() || "",
       telefoon: velden[kolIndex.telefoon]?.trim() || "",
     };

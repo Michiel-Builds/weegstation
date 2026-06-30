@@ -30,6 +30,63 @@ const POSITIE_BESTAND = () => path.join(app.getPath("userData"), "posities.json"
 const AUTH_BESTAND = () => path.join(app.getPath("userData"), "auth.json");
 const BEDRIJF_BESTAND = () => path.join(app.getPath("userData"), "bedrijf.json");
 
+// =============================================
+// Duurzame data-opslag (wettelijke 5-jaars bewaarplicht)
+// Elke sleutel als eigen JSON-bestand in userData/data, met .bak back-up.
+// =============================================
+const DATA_DIR = () => path.join(app.getPath("userData"), "data");
+const AUDIT_DIR = () => path.join(app.getPath("userData"), "lma-audit");
+
+function zorgVoorMap(dir) {
+  try {
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch (e) {
+    log.error("Map aanmaken mislukt:", dir, e);
+  }
+}
+
+function dataBestand(key) {
+  const veilig = String(key).replace(/[^a-zA-Z0-9_-]/g, "_");
+  return path.join(DATA_DIR(), veilig + ".json");
+}
+
+function laadDataSleutel(key) {
+  try {
+    const f = dataBestand(key);
+    if (fs.existsSync(f)) {
+      return JSON.parse(fs.readFileSync(f, "utf-8"));
+    }
+    // Fallback naar back-up als hoofdbestand corrupt/weg is
+    const bak = f + ".bak";
+    if (fs.existsSync(bak)) {
+      return JSON.parse(fs.readFileSync(bak, "utf-8"));
+    }
+  } catch (e) {
+    log.error("Data laden mislukt voor", key, e);
+    try {
+      const bak = dataBestand(key) + ".bak";
+      if (fs.existsSync(bak)) return JSON.parse(fs.readFileSync(bak, "utf-8"));
+    } catch (e2) { log.error("Back-up laden mislukt voor", key, e2); }
+  }
+  return null;
+}
+
+function bewaarDataSleutel(key, value) {
+  zorgVoorMap(DATA_DIR());
+  const f = dataBestand(key);
+  try {
+    // Roteer huidige naar .bak voordat we overschrijven
+    if (fs.existsSync(f)) {
+      try { fs.copyFileSync(f, f + ".bak"); } catch (e) { log.warn("Back-up maken mislukt:", e); }
+    }
+    fs.writeFileSync(f, JSON.stringify(value, null, 2), "utf-8");
+    return true;
+  } catch (e) {
+    log.error("Data bewaren mislukt voor", key, e);
+    throw e;
+  }
+}
+
 function laadPosities() {
   try {
     if (fs.existsSync(POSITIE_BESTAND())) {
@@ -297,6 +354,134 @@ ipcMain.handle("bewaar-bedrijf", (event, config) => {
   } catch (err) {
     log.error("Bedrijfconfig bewaren mislukt:", err);
     throw err;
+  }
+});
+
+// --- Duurzame data-opslag IPC ---
+ipcMain.handle("data-laad", (event, key) => {
+  try { return laadDataSleutel(key); }
+  catch (err) { log.error("data-laad fout:", err); return null; }
+});
+
+ipcMain.handle("data-laad-alles", (event, keys) => {
+  const result = {};
+  try {
+    (Array.isArray(keys) ? keys : []).forEach(k => {
+      const v = laadDataSleutel(k);
+      if (v !== null && v !== undefined) result[k] = v;
+    });
+  } catch (err) { log.error("data-laad-alles fout:", err); }
+  return result;
+});
+
+ipcMain.handle("data-bewaar", (event, { key, value }) => {
+  try { return bewaarDataSleutel(key, value); }
+  catch (err) { log.error("data-bewaar fout:", err); throw err; }
+});
+
+ipcMain.handle("data-exporteer", async (event, { keys, suggestedName } = {}) => {
+  try {
+    const bundel = { exportDatum: new Date().toISOString(), data: {} };
+    (Array.isArray(keys) ? keys : []).forEach(k => {
+      bundel.data[k] = laadDataSleutel(k);
+    });
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: "Back-up exporteren",
+      defaultPath: suggestedName || ("weegstation-backup-" + new Date().toISOString().slice(0, 10) + ".json"),
+      filters: [{ name: "JSON", extensions: ["json"] }],
+    });
+    if (canceled || !filePath) return { ok: false, geannuleerd: true };
+    fs.writeFileSync(filePath, JSON.stringify(bundel, null, 2), "utf-8");
+    return { ok: true, pad: filePath };
+  } catch (err) {
+    log.error("data-exporteer fout:", err);
+    return { ok: false, fout: err.message };
+  }
+});
+
+// --- LMA / AMICE IPC ---
+function laadLmaModules() {
+  const xmlBouwer = require(path.join(__dirname, "server", "lma", "xmlBouwer.cjs"));
+  const amiceClient = require(path.join(__dirname, "server", "lma", "amiceClient.cjs"));
+  return { xmlBouwer, amiceClient };
+}
+
+function bewaarAudit(naam, inhoud) {
+  try {
+    zorgVoorMap(AUDIT_DIR());
+    const stempel = new Date().toISOString().replace(/[:.]/g, "-");
+    const veilig = String(naam).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const pad = path.join(AUDIT_DIR(), `${stempel}_${veilig}`);
+    fs.writeFileSync(pad, inhoud, "utf-8");
+    return pad;
+  } catch (e) {
+    log.error("Audit bewaren mislukt:", e);
+    return null;
+  }
+}
+
+ipcMain.handle("lma-exporteer-xml", async (event, { type, payload, suggestedName } = {}) => {
+  try {
+    const { xmlBouwer } = laadLmaModules();
+    const xml = xmlBouwer.bouwMelding(type, payload);
+    bewaarAudit(`${type}_${payload?.asn || "melding"}.xml`, xml);
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: "LMA-melding exporteren (XML)",
+      defaultPath: suggestedName || `lma-${type}-${payload?.asn || ""}.xml`,
+      filters: [{ name: "XML", extensions: ["xml"] }],
+    });
+    if (canceled || !filePath) return { ok: false, geannuleerd: true, xml };
+    fs.writeFileSync(filePath, xml, "utf-8");
+    return { ok: true, pad: filePath, xml };
+  } catch (err) {
+    log.error("lma-exporteer-xml fout:", err);
+    return { ok: false, fout: err.message };
+  }
+});
+
+ipcMain.handle("lma-melden", async (event, { type, payload, omgeving, certConfig } = {}) => {
+  try {
+    const { xmlBouwer, amiceClient } = laadLmaModules();
+    const xml = xmlBouwer.bouwMelding(type, payload);
+    const result = await amiceClient.verzendMelding({ xml, omgeving, certConfig });
+    bewaarAudit(`${type}_${payload?.asn || "melding"}_verzonden.xml`, result.verzondenXml || xml);
+    if (result.body) bewaarAudit(`${type}_${payload?.asn || "melding"}_retour.xml`, result.body);
+    return result;
+  } catch (err) {
+    log.error("lma-melden fout:", err);
+    return { ok: false, fout: err.message };
+  }
+});
+
+ipcMain.handle("lma-status-opvragen", async (event, opties = {}) => {
+  try {
+    const { amiceClient } = laadLmaModules();
+    return await amiceClient.opvraagStatus(opties);
+  } catch (err) {
+    log.error("lma-status-opvragen fout:", err);
+    return { ok: false, fout: err.message };
+  }
+});
+
+ipcMain.handle("lma-toets-asn", async (event, opties = {}) => {
+  try {
+    const { amiceClient } = laadLmaModules();
+    return await amiceClient.toetsAfvalstroomnummer(opties);
+  } catch (err) {
+    log.error("lma-toets-asn fout:", err);
+    return { ok: false, fout: err.message };
+  }
+});
+
+ipcMain.handle("lma-cert-info", async (event, { certConfig } = {}) => {
+  try {
+    const { amiceClient } = laadLmaModules();
+    return amiceClient.certInfo(certConfig || {});
+  } catch (err) {
+    log.error("lma-cert-info fout:", err);
+    return { aanwezig: false, fout: err.message };
   }
 });
 

@@ -23,9 +23,12 @@ import RapportPagina from "./components/RapportPagina";
 import Calculator from "./components/Calculator";
 import KlantenSidebar from "./components/KlantenSidebar";
 import MultiWindowButtons from "./components/MultiWindowButtons";
+import Icon from "./components/Icon";
 import FormulierenPagina from "./components/FormulierenPagina";
 import InstellingenPagina from "./components/InstellingenPagina";
-import { laadServerIP, bewaarServerIP, laadServerKey, bewaarServerKey, magWeegserverVerbinden, maakWeegserverWsUrl } from "./utils/weegserver";
+import AfvalstromenPagina from "./components/AfvalstromenPagina";
+import LMAPagina from "./components/LMAPagina";
+import { laadServerIP, bewaarServerIP, laadServerKey, bewaarServerKey, magWeegserverVerbinden, maakWeegserverWsUrl, stuurStoplicht } from "./utils/weegserver";
 import { heeftAuthConfig } from "./utils/authStore";
 import { laadBedrijfConfig, heeftBedrijfConfig } from "./utils/bedrijfConfig";
 import { pasThemaToe } from "./utils/thema";
@@ -48,6 +51,7 @@ export default function App() {
   const [gewichtWeegbrug, setGewichtWeegbrug] = useState(null);
   const [gewichtLoods, setGewichtLoods] = useState(null);
   const [serverVerbonden, setServerVerbonden] = useState(false);
+  const [stoplicht, setStoplicht] = useState({ kleur: "rood", enabled: false });
   const [serverIP, setServerIP] = useState(() => laadServerIP());
   const [serverKey, setServerKey] = useState(() => laadServerKey());
   const [bedrijf, setBedrijf] = useState(null);
@@ -107,7 +111,9 @@ export default function App() {
             }
             if (data.weegbrug !== null && data.weegbrug !== undefined) setGewichtWeegbrug(data.weegbrug);
             if (data.loods !== null && data.loods !== undefined) setGewichtLoods(data.loods);
+            if (data.stoplicht) setStoplicht(data.stoplicht);
           }
+          if (data.type === "stoplicht") setStoplicht({ kleur: data.kleur, enabled: data.enabled });
           if (data.type === "gewicht_weegbrug") setGewichtWeegbrug(data.gewicht);
           if (data.type === "gewicht_loods") setGewichtLoods(data.gewicht);
           if (data.type === "nieuwe_weging") {
@@ -167,6 +173,14 @@ export default function App() {
       window.removeEventListener("ws-bon-omzet-update", verversBonOmzet);
     };
   }, []);
+
+  function bedienStoplicht(kleur) {
+    if (stuurStoplicht(wsRef.current, kleur)) {
+      toonToast(kleur === "groen" ? "🟢 Groen licht" : "🔴 Rood licht");
+    } else {
+      toonToast("⚠ Geen verbinding met weegserver");
+    }
+  }
 
   function verstuurWeging(weging) {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -248,17 +262,29 @@ export default function App() {
     </>
   );
 
-  const navItems = [
-    { key: "dashboard", icon: "🟢", label: "Dashboard" },
-    { key: "calculator", icon: "🧮", label: "Calculator" },
-    { key: "wegen", icon: "✓", label: "Wegen" },
-    { key: "bon", icon: "📄", label: "Bon maken" },
-    { key: "wegingen", icon: "☰", label: "Overzicht" },
-    ...(kanPrijzen ? [{ key: "prijzen", icon: "€", label: "Prijzen" }] : []),
-    ...(kanPrijzen ? [{ key: "instellingen", icon: "⚙", label: "Instellingen" }] : []),
-    { key: "rapport", icon: "📊", label: "Rapport" },
-    { key: "import", icon: "📥", label: "XML Import" },
-    { key: "formulieren", icon: "📋", label: "Formulieren" },
+  const navSecties = [
+    {
+      titel: "Operatie",
+      items: [
+        { key: "dashboard", icon: "dashboard", label: "Dashboard" },
+        { key: "calculator", icon: "calculator", label: "Calculator" },
+        { key: "wegen", icon: "weeg", label: "Wegen" },
+        { key: "bon", icon: "document", label: "Bon maken" },
+      ],
+    },
+    {
+      titel: "Beheer",
+      items: [
+        { key: "wegingen", icon: "lijst", label: "Overzicht" },
+        ...(kanPrijzen ? [{ key: "prijzen", icon: "euro", label: "Prijzen" }] : []),
+        ...(kanPrijzen ? [{ key: "instellingen", icon: "instellingen", label: "Instellingen" }] : []),
+        { key: "rapport", icon: "rapport", label: "Rapport" },
+        { key: "afvalstromen", icon: "lijst", label: "Afvalstromen (LMA)" },
+        { key: "lma", icon: "rapport", label: "LMA / Afvalmelding" },
+        { key: "import", icon: "import", label: "XML Import" },
+        { key: "formulieren", icon: "formulieren", label: "Formulieren" },
+      ],
+    },
   ];
 
   const titels = {
@@ -267,6 +293,8 @@ export default function App() {
     wegingen: "Wegingen",
     prijzen: "Prijsbeheer",
     rapport: "Rapportage",
+    afvalstromen: "Afvalstromen (LMA)",
+    lma: "LMA / Afvalmelding",
     import: "XML Import",
     formulieren: "Formulieren",
     instellingen: "Instellingen",
@@ -281,16 +309,21 @@ export default function App() {
             <div className="logo-name">{PRODUCT_NAAM}</div>
           </div>
           <nav className="nav">
-            {navItems.map(item => (
-              <button
-                key={item.key}
-                className={`nav-item${pagina === item.key ? " active" : ""}`}
-                onClick={() => setPagina(item.key)}
-              >
-                <span className="nav-icon">{item.icon}</span>
-                <span>{item.label}</span>
-                {item.key === "dashboard" && <span className="live-dot" />}
-              </button>
+            {navSecties.map(sectie => (
+              <div className="nav-sectie" key={sectie.titel}>
+                <div className="nav-sec-titel">{sectie.titel}</div>
+                {sectie.items.map(item => (
+                  <button
+                    key={item.key}
+                    className={`nav-item${pagina === item.key ? " active" : ""}`}
+                    onClick={() => setPagina(item.key)}
+                  >
+                    <span className="nav-icon"><Icon name={item.icon} /></span>
+                    <span>{item.label}</span>
+                    {item.key === "dashboard" && <span className="live-dot" />}
+                  </button>
+                ))}
+              </div>
             ))}
           </nav>
 
@@ -357,7 +390,7 @@ export default function App() {
                 </div>
                 <div className="live-gewicht-balk">
                   <div className={`gewicht-kaart${gewichtWeegbrug !== null ? " actief" : ""}`}>
-                    <div className="gewicht-icon">🚛</div>
+                    <div className="gewicht-icon"><Icon name="truck" size={30} strokeWidth={1.75} /></div>
                     <div className="gewicht-info">
                       <div className="gewicht-bron">Weegbrug — live</div>
                       {gewichtWeegbrug !== null ? (
@@ -369,7 +402,7 @@ export default function App() {
                     </div>
                   </div>
                   <div className={`gewicht-kaart${gewichtLoods !== null ? " actief" : ""}`}>
-                    <div className="gewicht-icon">⚖</div>
+                    <div className="gewicht-icon"><Icon name="scale" size={30} strokeWidth={1.75} /></div>
                     <div className="gewicht-info">
                       <div className="gewicht-bron">Loods schaal — live</div>
                       {gewichtLoods !== null ? (
@@ -552,7 +585,11 @@ export default function App() {
                 prijzen={prijzen}
                 opbrengst={opbrengst}
                 klanten={klanten}
+                setKlanten={setKlanten}
                 bedrijfsnaam={bedrijf?.bedrijfsnaam || PRODUCT_NAAM}
+                stoplichtKleur={stoplicht.kleur}
+                stoplichtEnabled={stoplicht.enabled}
+                onStoplicht={bedienStoplicht}
               />
             )}
             {pagina === "import" && (
@@ -563,6 +600,12 @@ export default function App() {
             )}
             {pagina === "formulieren" && (
               <FormulierenPagina klanten={klanten} bedrijfsnaam={bedrijf?.bedrijfsnaam || ""} />
+            )}
+            {pagina === "afvalstromen" && (
+              <AfvalstromenPagina klanten={klanten} bedrijf={bedrijf} />
+            )}
+            {pagina === "lma" && (
+              <LMAPagina wegingen={wegingen} bedrijf={bedrijf} klanten={klanten} />
             )}
             {pagina === "instellingen" && (
               <InstellingenPagina

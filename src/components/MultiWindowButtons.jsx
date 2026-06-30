@@ -1,3 +1,5 @@
+import Icon from "./Icon";
+
 export default function MultiWindowButtons() {
   function openVenster(naam) {
     const fn = window.electronAPI && window.electronAPI[naam];
@@ -16,12 +18,12 @@ export default function MultiWindowButtons() {
         className="btn-open-mw"
         onClick={() => openVenster("openBonVenster")}
         title="Open bon in apart venster"
-      >📄 Bon-venster</button>
+      ><Icon name="document" size={14} /> Bon-venster</button>
       <button
         className="btn-open-mw"
         onClick={() => openVenster("openWegenVenster")}
         title="Open wegen in apart venster"
-      >⚖ Wegen-venster</button>
+      ><Icon name="scale" size={14} /> Wegen-venster</button>
     </>
   );
 }

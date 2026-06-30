@@ -3,6 +3,9 @@ import {
   getInitKlanten, voegKlantToe, verwijderKlant, updateKlant,
   maakLegeKlant, getZakelijk, getParticulier, importeerCSV
 } from "../data/klanten";
+import Icon from "./Icon";
+
+const inlineIcon = { verticalAlign: "-2px", marginRight: "5px", flexShrink: 0 };
 
 export default function KlantenSidebar({ klanten, setKlanten }) {
   const [toonZakelijk, setToonZakelijk] = useState(true);
@@ -41,7 +44,7 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
     if (bewerkId) {
       let updated = klanten;
       ["type", "naam", "contactpersoon", "adres", "postcode", "plaats",
-       "btw", "kvk", "email", "telefoon", "legitimatieType", "legitimatieNummer", "notities"].forEach(veld => {
+       "btw", "kvk", "amiceBedrijfsnummer", "vihb", "email", "telefoon", "legitimatieType", "legitimatieNummer", "notities"].forEach(veld => {
         updated = updateKlant(updated, bewerkId, veld, formData[veld]);
       });
       setKlanten(updated);
@@ -78,7 +81,7 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
       <div className="klant-item-kl" title={`${k.naam} — ${k.plaats || ""}`}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="klant-item-naam-kl">
-            {k.type === "zakelijk" ? "🏢" : "👤"} {k.naam}
+            <Icon name={k.type === "zakelijk" ? "gebouw" : "persoon"} size={13} style={inlineIcon} />{k.naam}
           </div>
           {k.plaats && (
             <div className="klant-item-sub-kl">
@@ -90,7 +93,7 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
           className="klant-actie-kl"
           onClick={() => openBewerk(k)}
           title="Bewerken"
-        >✎</button>
+        ><Icon name="bewerk" size={13} /></button>
         <button
           className="klant-actie-kl del"
           onClick={() => verwijder(k)}
@@ -103,21 +106,24 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
   return (
     <div className="klanten-sidebar-kl">
       <div className="klanten-header-kl">
-        <span className="klanten-titel-kl">👥 Klanten</span>
+        <span className="klanten-titel-kl"><Icon name="personen" size={15} style={inlineIcon} />Klanten</span>
         <span className="badge">{klanten.length}</span>
       </div>
 
       <input
         className="klanten-zoek-kl"
         type="text"
-        placeholder="🔍 Zoek klant..."
+        placeholder="Zoek klant..."
         value={zoekterm}
         onChange={e => setZoekterm(e.target.value)}
       />
 
       <div className="klant-categorie-kl">
         <button className="klant-cat-header-kl" onClick={() => setToonZakelijk(!toonZakelijk)}>
-          <span>{toonZakelijk ? "▾" : "▸"} 🏢 Zakelijk</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Icon name={toonZakelijk ? "chevronOnder" : "chevronRechts"} size={13} />
+            <Icon name="gebouw" size={13} /> Zakelijk
+          </span>
           <span className="klant-cat-count-kl">{zakelijk.length}</span>
         </button>
         {toonZakelijk && (
@@ -131,7 +137,10 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
 
       <div className="klant-categorie-kl">
         <button className="klant-cat-header-kl" onClick={() => setToonParticulier(!toonParticulier)}>
-          <span>{toonParticulier ? "▾" : "▸"} 👤 Particulier</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Icon name={toonParticulier ? "chevronOnder" : "chevronRechts"} size={13} />
+            <Icon name="persoon" size={13} /> Particulier
+          </span>
           <span className="klant-cat-count-kl">{particulier.length}</span>
         </button>
         {toonParticulier && (
@@ -145,13 +154,13 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
 
       <div className="klant-acties-kl">
         <button className="klant-btn-kl primair" onClick={openNieuw}>
-          ➕ Nieuwe klant
+          <Icon name="plus" size={14} style={inlineIcon} />Nieuwe klant
         </button>
         <button
           className="klant-btn-kl secundair"
           onClick={() => fileInputRef.current?.click()}
         >
-          📥 Importeren
+          <Icon name="import" size={14} style={inlineIcon} />Importeren
         </button>
         <input
           ref={fileInputRef}
@@ -174,7 +183,7 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
           <div className="klant-modal-kl" onClick={e => e.stopPropagation()}>
             <div className="klant-modal-header-kl">
               <span className="klant-modal-titel-kl">
-                {bewerkId ? "✎ Klant bewerken" : "➕ Nieuwe klant"}
+                <Icon name={bewerkId ? "bewerk" : "plus"} size={14} style={inlineIcon} />{bewerkId ? "Klant bewerken" : "Nieuwe klant"}
               </span>
               <button className="klant-actie-kl" onClick={() => setToonFormulier(false)}>×</button>
             </div>
@@ -182,8 +191,8 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
               <div className="klant-modal-row-kl">
                 <label>Type</label>
                 <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
-                  <option value="zakelijk">🏢 Zakelijk</option>
-                  <option value="particulier">👤 Particulier</option>
+                  <option value="zakelijk">Zakelijk</option>
+                  <option value="particulier">Particulier</option>
                 </select>
               </div>
               <div className="klant-modal-row-kl">
@@ -218,6 +227,26 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
                   <input value={formData.kvk} onChange={e => setFormData({ ...formData, kvk: e.target.value })} />
                 </div>
               </div>
+              {formData.type === "zakelijk" && (
+                <div className="klant-modal-grid-kl">
+                  <div className="klant-modal-row-kl">
+                    <label>AMICE-bedrijfsnummer</label>
+                    <input
+                      value={formData.amiceBedrijfsnummer || ""}
+                      onChange={e => setFormData({ ...formData, amiceBedrijfsnummer: e.target.value })}
+                      placeholder="Voor LMA-meldingen (optioneel)"
+                    />
+                  </div>
+                  <div className="klant-modal-row-kl">
+                    <label>VIHB-nummer</label>
+                    <input
+                      value={formData.vihb || ""}
+                      onChange={e => setFormData({ ...formData, vihb: e.target.value })}
+                      placeholder="Vervoerder/inzamelaar (begeleidingsbrief)"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="klant-modal-grid-kl">
                 <div className="klant-modal-row-kl">
                   <label>Telefoon</label>
@@ -232,7 +261,7 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
             <div className="klant-modal-footer-kl">
               <button className="klant-btn-kl secundair" onClick={() => setToonFormulier(false)}>Annuleren</button>
               <button className="klant-btn-kl primair" onClick={slaOp}>
-                {bewerkId ? "💾 Opslaan" : "✓ Toevoegen"}
+                <Icon name={bewerkId ? "opslaan" : "check"} size={14} style={inlineIcon} />{bewerkId ? "Opslaan" : "Toevoegen"}
               </button>
             </div>
           </div>

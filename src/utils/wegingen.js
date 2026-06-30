@@ -1,4 +1,5 @@
 import { berekenOmzetWeging } from "./opbrengstDag";
+import { bewaarDuurzaam } from "./opslag";
 
 export const WEGINGEN_LS_KEY = "ws-wegingen";
 const WEGINGEN_RESET_KEY = "ws-wegingen-reset-v1";
@@ -27,9 +28,7 @@ export function laadWegingenUitLS() {
 
 export function bewaarWegingenInLS(wegingen) {
   if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(WEGINGEN_LS_KEY, JSON.stringify(wegingen));
-  } catch {}
+  bewaarDuurzaam(WEGINGEN_LS_KEY, wegingen);
 }
 
 export function berekenRapportPerMateriaal(wegingen, materialen, dagSnapshots = {}) {
