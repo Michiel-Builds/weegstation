@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WeegStation demo-video</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f1419;
+      color: #e8eaed;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: min(720px, 100%);
+      background: #1a2332;
+      border: 1px solid #2d3a4d;
+      border-radius: 16px;
+      padding: 24px;
+    }
+    h1 { margin: 0 0 8px; font-size: 1.35rem; }
+    p { margin: 0 0 20px; color: #9aa5b4; line-height: 1.5; }
+    video {
+      width: 100%;
+      border-radius: 10px;
+      background: #000;
+      margin-bottom: 20px;
+    }
+    .btn {
+      display: inline-block;
+      padding: 14px 22px;
+      background: #2d8f6f;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .btn:active { opacity: 0.9; }
+    .hint { margin-top: 16px; font-size: 0.85rem; color: #7b8794; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>WeegStation — demo-video</h1>
+    <p>Rondleiding door de app: setup, inloggen en alle hoofdschermen.</p>
+    <video src="./weegstation-demo.mp4" controls playsinline preload="metadata"></video>
+    <a class="btn" href="./weegstation-demo.mp4" download="WeegStation-demo.mp4">Download video (MP4)</a>
+    <p class="hint">Op iPhone: tik op de knop en kies “Download” of “Bewaar in Bestanden”.</p>
+  </div>
+</body>
+</html>
