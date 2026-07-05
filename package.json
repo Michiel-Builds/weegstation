@@ -9,6 +9,7 @@
     "server": "node server/weegserver.cjs",
     "build": "vite build",
     "dist": "electron-builder",
+    "release": "vite build && electron-builder --win --publish always",
     "pak-weegserver": "node scripts/pak-weegserver.mjs",
     "electron:dev": "electron ."
   },

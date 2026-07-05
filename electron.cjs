@@ -525,11 +525,11 @@ autoUpdater.on("update-downloaded", function (info) {
     if (choice === 0) autoUpdater.quitAndInstall();
   }
 });
-autoUpdater.on("error", function (err) { 
-  log.error("Update-fout:", err.message);
-  if (mainWindow) {
-    dialog.showErrorBox("Update Fout", "Er was een probleem bij het controleren op updates:\n" + err.message);
-  }
+autoUpdater.on("error", function (err) {
+  // Update-fouten mogen het weegproces nooit blokkeren: alleen loggen,
+  // geen blokkerende foutmelding tonen (netwerk/GitHub/checksum e.d. zijn
+  // niet kritiek voor de dagelijkse werking).
+  log.error("Update-fout:", err == null ? "onbekend" : (err.stack || err.message || String(err)));
 });
 
 app.whenReady().then(function () {
