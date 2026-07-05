@@ -1,6 +1,6 @@
 /** Vaste productnaam — niet per klant aanpasbaar. */
 export const PRODUCT_NAAM = "WeegStation";
-export const PRODUCT_VERSIE = "3.1.0";
+export const PRODUCT_VERSIE = "3.1.1";
 export const PRODUCT_OMSCHRIJVING = "Professioneel weeg- en voorraadsysteem voor metaalrecycling";
 
 export const DEFAULT_ACCENT = "#2e7d32";
