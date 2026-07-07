@@ -541,6 +541,13 @@ app.whenReady().then(function () {
         createWindow();
         if (!mainWindow) {
           log.error("✗ Venster aanmaking mislukt - mainWindow is null");
+          var logPad = "";
+          try { logPad = log.transports.file.getFile().path; } catch (e) { logPad = ""; }
+          dialog.showErrorBox(
+            "Startup Fout",
+            "WeegStation kon het hoofdvenster niet openen.\n\n" +
+            (logPad ? "Logbestand:\n" + logPad : "Herinstalleer via WeegStation-Setup.exe")
+          );
           app.quit();
           return;
         }
