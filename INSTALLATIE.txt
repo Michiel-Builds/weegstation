@@ -35,7 +35,8 @@ BEVEILIGING (geen geheimen in broncode)
 
 BOUWEN (ontwikkelaar)
 ─────────────────────
-  npm run dist              → .exe voor kantoor
+  npm run build:win         → .exe lokaal bouwen
+  npm run release           → bouwen + upload + verify GitHub
   npm run pak-weegserver    → ZIP voor weegbrug
 
 
