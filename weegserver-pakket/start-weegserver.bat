@@ -17,11 +17,17 @@ if not exist "server.cjs" (
 )
 
 if not exist ".env" (
+  if exist "env.txt" ren "env.txt" ".env"
+  if exist ".env.txt" ren ".env.txt" ".env"
+  if not exist ".env" if exist "weegbrug.env" copy /Y "weegbrug.env" ".env" >nul
+  if not exist ".env" if exist "config.example.env" copy /Y "config.example.env" ".env" >nul
+)
+
+if not exist ".env" (
   echo FOUT: .env ontbreekt.
   echo.
-  echo 1. Kopieer config.example.env naar .env
-  echo 2. Vul WEEGSERVER_KEY in ^(zelfde als kantoor-PC^)
-  echo 3. Start dit bestand opnieuw
+  echo Dubbelklik eerst: maak-env.bat
+  echo   ^(maakt .env zonder Kladblok — geen .txt probleem^)
   echo.
   pause
   exit /b 1

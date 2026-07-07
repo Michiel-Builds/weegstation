@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import "./styles.css";
 
 import { PRODUCT_NAAM, LMA_INGESCHAKELD } from "./data/product";
@@ -28,7 +28,8 @@ import FormulierenPagina from "./components/FormulierenPagina";
 import InstellingenPagina from "./components/InstellingenPagina";
 import AfvalstromenPagina from "./components/AfvalstromenPagina";
 import LMAPagina from "./components/LMAPagina";
-import { laadServerIP, bewaarServerIP, laadServerKey, bewaarServerKey, magWeegserverVerbinden, maakWeegserverWsUrl, stuurStoplicht } from "./utils/weegserver";
+import { laadServerIP, bewaarServerIP, laadServerKey, bewaarServerKey, stuurStoplicht } from "./utils/weegserver";
+import { useWeegserverWs } from "./utils/useWeegserverWs";
 import { heeftAuthConfig } from "./utils/authStore";
 import { laadBedrijfConfig, heeftBedrijfConfig } from "./utils/bedrijfConfig";
 import { pasThemaToe } from "./utils/thema";
@@ -56,13 +57,56 @@ export default function App() {
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [gewichtWeegbrug, setGewichtWeegbrug] = useState(null);
   const [gewichtLoods, setGewichtLoods] = useState(null);
-  const [serverVerbonden, setServerVerbonden] = useState(false);
   const [stoplicht, setStoplicht] = useState({ kleur: "rood", enabled: false });
   const [serverIP, setServerIP] = useState(() => laadServerIP());
   const [serverKey, setServerKey] = useState(() => laadServerKey());
+  const [serverIPDraft, setServerIPDraft] = useState(() => laadServerIP());
+  const [serverKeyDraft, setServerKeyDraft] = useState(() => laadServerKey());
   const [bedrijf, setBedrijf] = useState(null);
   const [klanten, setKlanten] = useState(() => getInitKlanten());
-  const wsRef = useRef(null);
+
+  function toonToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2500); }
+
+  const wsActief = !!(gebruiker && authStatus === "klaar" && serverKey.trim());
+
+  const { wsRef, verbonden: serverVerbonden } = useWeegserverWs({
+    actief: wsActief,
+    ip: serverIP,
+    sleutel: serverKey,
+    onBericht: (data) => {
+      setLastUpdate(new Date());
+      if (data.type === "init") {
+        if (data.wegingen) {
+          setWegingen(data.wegingen);
+          bewaarWegingenInLS(data.wegingen);
+        }
+        if (data.weegbrug !== null && data.weegbrug !== undefined) setGewichtWeegbrug(data.weegbrug);
+        if (data.loods !== null && data.loods !== undefined) setGewichtLoods(data.loods);
+        if (data.stoplicht) setStoplicht(data.stoplicht);
+      }
+      if (data.type === "stoplicht") setStoplicht({ kleur: data.kleur, enabled: data.enabled });
+      if (data.type === "gewicht_weegbrug") setGewichtWeegbrug(data.gewicht);
+      if (data.type === "gewicht_loods") setGewichtLoods(data.gewicht);
+      if (data.type === "nieuwe_weging") {
+        setWegingen(prev => {
+          const updated = [data.weging, ...prev].slice(0, 200);
+          bewaarWegingenInLS(updated);
+          return updated;
+        });
+      }
+    },
+    onVerbonden: () => toonToast("✓ Live verbonden"),
+    onVerbroken: () => {},
+  });
+
+  function pasServerInstellingenToe() {
+    const ip = serverIPDraft.trim();
+    const key = serverKeyDraft.trim();
+    setServerIP(ip);
+    setServerKey(key);
+    bewaarServerIP(ip);
+    bewaarServerKey(key);
+  }
 
   useEffect(() => {
     migreerOpslagSleutels();
@@ -85,80 +129,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!gebruiker || authStatus !== "klaar") return;
-    if (!serverKey.trim()) return;
-    if (!magWeegserverVerbinden()) {
-      console.warn("WAARSCHUWING: App draait niet in lokaal netwerk. Server-verbinding uitgeschakeld.");
-      return;
-    }
-    function verbindServer(ip, key) {
-      let ws;
-      try {
-        ws = new WebSocket(maakWeegserverWsUrl(ip, key));
-      } catch (e) {
-        console.error("WebSocket constructie fout:", e);
-        setServerVerbonden(false);
-        return;
-      }
-      wsRef.current = ws;
-      ws.onopen = () => {
-        console.log("✓ Server verbonden op " + ip + ":3000");
-        setServerVerbonden(true);
-        toonToast("✓ Live verbonden");
-      };
-      ws.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          setLastUpdate(new Date());
-          if (data.type === "init") {
-            if (data.wegingen) {
-              setWegingen(data.wegingen);
-              bewaarWegingenInLS(data.wegingen);
-            }
-            if (data.weegbrug !== null && data.weegbrug !== undefined) setGewichtWeegbrug(data.weegbrug);
-            if (data.loods !== null && data.loods !== undefined) setGewichtLoods(data.loods);
-            if (data.stoplicht) setStoplicht(data.stoplicht);
-          }
-          if (data.type === "stoplicht") setStoplicht({ kleur: data.kleur, enabled: data.enabled });
-          if (data.type === "gewicht_weegbrug") setGewichtWeegbrug(data.gewicht);
-          if (data.type === "gewicht_loods") setGewichtLoods(data.gewicht);
-          if (data.type === "nieuwe_weging") {
-            setWegingen(prev => {
-              const updated = [data.weging, ...prev].slice(0, 200);
-              bewaarWegingenInLS(updated);
-              return updated;
-            });
-          }
-        } catch (e) {
-          console.error("Fout bij WebSocket bericht verwerking:", e);
-        }
-      };
-      ws.onclose = () => { 
-        console.warn("Server verbinding verbroken. Herverbinden in 5 seconden...");
-        setServerVerbonden(false); 
-        setTimeout(() => gebruiker && verbindServer(ip, key), 5000); 
-      };
-      ws.onerror = (err) => {
-        console.error("WebSocket fout:", err);
-        setServerVerbonden(false);
-        toonToast("⚠ Server niet bereikbaar");
-      };
-    }
-    verbindServer(serverIP, serverKey);
-    return () => { if (wsRef.current) wsRef.current.close(); };
-  }, [gebruiker, serverIP, serverKey, authStatus]);
-
-  useEffect(() => {
     bewaarWegingenInLS(wegingen);
   }, [wegingen]);
-
-  useEffect(() => {
-    bewaarServerIP(serverIP);
-  }, [serverIP]);
-
-  useEffect(() => {
-    bewaarServerKey(serverKey);
-  }, [serverKey]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -205,7 +177,6 @@ export default function App() {
     setLastUpdate(new Date());
   }
 
-  function toonToast(msg) { setToast(msg); setTimeout(() => setToast(null), 2500); }
   function wijzigOpbrengst(materiaalId, waarde) {
     setTempOpbrengst(p => ({ ...p, [materiaalId]: waarde }));
     setTempPrijzen(p => ({ ...p, [materiaalId]: inkoopVanOpbrengst(waarde) }));
@@ -371,30 +342,31 @@ export default function App() {
                   <div className={`server-dot ${serverVerbonden ? "verbonden" : "verbroken"}`} />
                   <span style={{ color: serverVerbonden ? "var(--green)" : "var(--red)" }}>
                     {serverVerbonden
-                      ? "Live verbonden met weegserver"
+                      ? `Live verbonden met weegserver (${serverIP})`
                       : !serverKey.trim()
-                        ? "Vul weegserver-sleutel in"
-                        : "Verbinding verbroken — herverbinden..."}
+                        ? "Vul weegserver-sleutel in en klik Verbinden"
+                        : "Geen verbinding — opnieuw proberen over 5 sec"}
                   </span>
-                  {!serverVerbonden && (
-                    <div className="server-instellingen">
-                      <input
-                        className="server-ip-input"
-                        value={serverIP}
-                        onChange={e => setServerIP(e.target.value)}
-                        placeholder="IP weegbrug"
-                        title="IP-adres weegbrug-PC"
-                      />
-                      <input
-                        className="server-ip-input server-key-input"
-                        type="password"
-                        value={serverKey}
-                        onChange={e => setServerKey(e.target.value)}
-                        placeholder="Weegserver-sleutel"
-                        title="Zelfde sleutel als WEEGSERVER_KEY op weegbrug-PC"
-                      />
-                    </div>
-                  )}
+                  <div className="server-instellingen">
+                    <input
+                      className="server-ip-input"
+                      value={serverIPDraft}
+                      onChange={e => setServerIPDraft(e.target.value)}
+                      placeholder="IP weegbrug"
+                      title="IP-adres weegbrug-PC (bijv. 192.168.10.50)"
+                    />
+                    <input
+                      className="server-ip-input server-key-input"
+                      type="password"
+                      value={serverKeyDraft}
+                      onChange={e => setServerKeyDraft(e.target.value)}
+                      placeholder="Weegserver-sleutel"
+                      title="Zelfde sleutel als WEEGSERVER_KEY op weegbrug-PC"
+                    />
+                    <button type="button" className="btn btn-primary" onClick={pasServerInstellingenToe}>
+                      Verbinden
+                    </button>
+                  </div>
                 </div>
                 <div className="live-gewicht-balk">
                   <div className={`gewicht-kaart${gewichtWeegbrug !== null ? " actief" : ""}`}>
@@ -406,7 +378,7 @@ export default function App() {
                           <span className="gewicht-getal-groot">{gewichtWeegbrug.toLocaleString("nl-NL")}</span>
                           <span className="gewicht-eenheid-groot"> kg</span>
                         </div>
-                      ) : <div className="gewicht-wachten">Wachten op weegbrug...</div>}
+                      ) : <div className="gewicht-wachten">{serverVerbonden ? "Verbonden — wachten op COM-poort weegbrug..." : "Niet verbonden met weegserver"}</div>}
                     </div>
                   </div>
                   <div className={`gewicht-kaart${gewichtLoods !== null ? " actief" : ""}`}>

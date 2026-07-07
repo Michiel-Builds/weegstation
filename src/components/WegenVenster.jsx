@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import WeegPagina from "./WeegPagina";
 import { getInitKlanten } from "../data/klanten";
 import { INIT_PRIJZEN, INIT_OPBRENGST } from "../data/stamdata";
 import { PRODUCT_NAAM } from "../data/product";
 import { laadBedrijfConfig } from "../utils/bedrijfConfig";
 import { laadPrijzenState } from "../utils/prijzen";
-import { laadServerIP, magWeegserverVerbinden, maakWeegserverWsUrl, laadServerKey, stuurStoplicht } from "../utils/weegserver";
+import { laadServerIP, laadServerKey, stuurStoplicht } from "../utils/weegserver";
+import { useWeegserverWs } from "../utils/useWeegserverWs";
 
 import { WEGINGEN_LS_KEY as WEGINGEN_KEY, laadWegingenUitLS } from "../utils/wegingen";
 const KLANTEN_KEY   = "ws-klanten";
@@ -24,52 +25,32 @@ export default function WegenVenster() {
   const [wegingen, setWegingen] = useState(() => laadWegingenUitLS());
   const [gewichtWeegbrug, setGewichtWeegbrug] = useState(null);
   const [gewichtLoods, setGewichtLoods] = useState(null);
-  const [serverVerbonden, setServerVerbonden] = useState(false);
   const [bedrijfsnaam, setBedrijfsnaam] = useState("");
   const [stoplicht, setStoplicht] = useState({ kleur: "rood", enabled: false });
-  const wsRef = useRef(null);
+  const sleutel = laadServerKey();
+  const ip = laadServerIP();
+
+  const { wsRef, verbonden: serverVerbonden } = useWeegserverWs({
+    actief: !!sleutel.trim(),
+    ip,
+    sleutel,
+    onBericht: (data) => {
+      if (data.type === "init") {
+        if (data.weegbrug !== null && data.weegbrug !== undefined) setGewichtWeegbrug(data.weegbrug);
+        if (data.loods !== null && data.loods !== undefined) setGewichtLoods(data.loods);
+        if (data.stoplicht) setStoplicht(data.stoplicht);
+      }
+      if (data.type === "stoplicht") setStoplicht({ kleur: data.kleur, enabled: data.enabled });
+      if (data.type === "gewicht_weegbrug") setGewichtWeegbrug(data.gewicht);
+      if (data.type === "gewicht_loods") setGewichtLoods(data.gewicht);
+    },
+  });
 
   useEffect(() => {
     document.title = `${PRODUCT_NAAM} — Wegen-venster`;
     laadBedrijfConfig().then(cfg => {
       if (cfg?.bedrijfsnaam) setBedrijfsnaam(cfg.bedrijfsnaam);
     });
-  }, []);
-
-  useEffect(() => {
-    if (!magWeegserverVerbinden()) return;
-    const ip = laadServerIP();
-    function verbind() {
-      let ws;
-      try {
-        ws = new WebSocket(maakWeegserverWsUrl(ip, laadServerKey()));
-      } catch (e) {
-        setServerVerbonden(false);
-        return;
-      }
-      wsRef.current = ws;
-      ws.onopen = () => setServerVerbonden(true);
-      ws.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          if (data.type === "init") {
-            if (data.weegbrug !== null && data.weegbrug !== undefined) setGewichtWeegbrug(data.weegbrug);
-            if (data.loods !== null && data.loods !== undefined) setGewichtLoods(data.loods);
-            if (data.stoplicht) setStoplicht(data.stoplicht);
-          }
-          if (data.type === "stoplicht") setStoplicht({ kleur: data.kleur, enabled: data.enabled });
-          if (data.type === "gewicht_weegbrug") setGewichtWeegbrug(data.gewicht);
-          if (data.type === "gewicht_loods") setGewichtLoods(data.gewicht);
-        } catch (err) {}
-      };
-      ws.onclose = () => {
-        setServerVerbonden(false);
-        setTimeout(verbind, 5000);
-      };
-      ws.onerror = () => setServerVerbonden(false);
-    }
-    verbind();
-    return () => { if (wsRef.current) wsRef.current.close(); };
   }, []);
 
   useEffect(() => {

@@ -32,6 +32,10 @@ cpSync(join(pkgDir, "start-weegserver.bat"), join(outDir, "start-weegserver.bat"
 cpSync(join(pkgDir, "LEESMIJ.txt"), join(outDir, "LEESMIJ.txt"));
 cpSync(join(pkgDir, "OFFLINE-INSTALLATIE.txt"), join(outDir, "OFFLINE-INSTALLATIE.txt"));
 cpSync(join(pkgDir, "config.example.env"), join(outDir, "config.example.env"));
+cpSync(join(pkgDir, "maak-env.bat"), join(outDir, "maak-env.bat"));
+if (existsSync(join(pkgDir, "weegbrug.env"))) {
+  cpSync(join(pkgDir, "weegbrug.env"), join(outDir, "weegbrug.env"));
+}
 
 console.log("→ npm install (productie)...\n");
 execSync("npm install --omit=dev", { cwd: outDir, stdio: "inherit" });

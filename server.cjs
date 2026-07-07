@@ -11,7 +11,7 @@ const { SerialPort } = require('serialport');
 const fs         = require('fs');
 const path       = require('path');
 const os         = require('os');
-const { parseAllowedIps, isIpAllowed, verifyWsAuth } = require('./server/security.cjs');
+const { normalizeIp, parseAllowedIps, isIpAllowed, parseWsKey, verifyWsAuth } = require('./server/security.cjs');
 
 let maakStoplicht;
 try {
@@ -167,6 +167,16 @@ wss.on('connection', (ws, req) => {
     return;
   }
 
+  const clientIp = normalizeIp(ip);
+  verbondenClients.forEach(function (bestaand) {
+    if (bestaand._clientIp === clientIp && bestaand.readyState === WebSocket.OPEN) {
+      log('Oude verbinding van ' + clientIp + ' sluiten (nieuwe app-verbinding)');
+      try { bestaand.close(1000, 'Vervangen door nieuwe verbinding'); } catch (e) {}
+      verbondenClients.delete(bestaand);
+    }
+  });
+  ws._clientIp = clientIp;
+
   verbondenClients.add(ws);
   log('App verbonden vanaf ' + ip + ' (' + verbondenClients.size + ' actief)');
 
@@ -197,7 +207,14 @@ wss.on('connection', (ws, req) => {
     } catch(e) {}
   });
 
+  const pingTimer = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      try { ws.ping(); } catch (e) {}
+    }
+  }, 25000);
+
   ws.on('close', () => {
+    clearInterval(pingTimer);
     verbondenClients.delete(ws);
     log('App verbroken (' + verbondenClients.size + ' actief)');
   });
