@@ -28,8 +28,12 @@ function sha512File(filePath) {
 }
 
 function parseLatestYml(inhoud) {
-  const sizeMatch = inhoud.match(/^size:\s*(\d+)/m);
-  const shaMatch = inhoud.match(/^sha512:\s*(.+)$/m);
+  const sizeMatch =
+    inhoud.match(/^size:\s*(\d+)/m) ||
+    inhoud.match(/^\s+size:\s*(\d+)/m);
+  const shaMatch =
+    inhoud.match(/^sha512:\s*(.+)$/m) ||
+    inhoud.match(/^\s+sha512:\s*(.+)$/m);
   return {
     size: sizeMatch ? Number(sizeMatch[1]) : null,
     sha512: shaMatch ? shaMatch[1].trim() : null,
