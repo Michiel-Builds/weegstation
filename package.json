@@ -1,6 +1,6 @@
 {
   "name": "weegstation-app",
-  "version": "3.1.6",
+  "version": "3.1.7",
   "description": "WeegStation - professioneel weeg- en voorraadsysteem voor metaalrecycling",
   "author": "Michiel Bulters",
   "main": "electron.cjs",
@@ -43,6 +43,9 @@
     "appId": "nl.weegstation.app",
     "productName": "WeegStation",
     "copyright": "Copyright © 2026 WeegStation",
+    "directories": {
+      "output": "release/electron-dist"
+    },
     "asarUnpack": [
       "dist/**/*",
       "preload.js",
@@ -100,6 +103,18 @@
       {
         "to": "icon-512.png",
         "from": "build/icon-512.png"
+      },
+      {
+        "to": "icon.ico",
+        "from": "build/icon.ico"
+      },
+      {
+        "to": "preload.js",
+        "from": "preload.js"
+      },
+      {
+        "to": "app-dist",
+        "from": "dist"
       }
     ]
   },

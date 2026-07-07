@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 
 $version = (Get-Content (Join-Path $root "package.json") | ConvertFrom-Json).version
-$installer = Join-Path $root "dist\WeegStation-Setup-$version.exe"
+$installer = Join-Path $root "release\electron-dist\WeegStation-Setup-$version.exe"
 
 if (-not (Test-Path $installer)) {
   Write-Host "✗ Installer niet gevonden: $installer" -ForegroundColor Red

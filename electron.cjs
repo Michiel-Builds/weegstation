@@ -11,25 +11,38 @@ log.info("App packaged:", app.isPackaged);
 log.info("App path:", app.getAppPath());
 log.info("__dirname:", __dirname);
 
-// Zoek gebundelde bestanden — unpacked eerst (Program Files mist soms unpacked), dan asar
+// Zoek gebundelde bestanden — extraResources eerst (altijd buiten asar, betrouwbaar op elke installatie)
 function vindBestand() {
   const segments = Array.prototype.slice.call(arguments);
+  const rel = segments.join("/");
   const kandidaten = [];
   if (app.isPackaged) {
+    if (rel === "preload.js") {
+      kandidaten.push(path.join(process.resourcesPath, "preload.js"));
+    }
+    if (segments[0] === "dist") {
+      kandidaten.push(path.join(process.resourcesPath, "app-dist", ...segments.slice(1)));
+    }
+    if (segments[0] === "build" && segments[1] === "splash.html") {
+      kandidaten.push(path.join(process.resourcesPath, "splash.html"));
+    }
+    if (segments[0] === "build" && segments[1] === "icon.ico") {
+      kandidaten.push(path.join(process.resourcesPath, "icon.ico"));
+    }
     kandidaten.push(path.join(process.resourcesPath, "app.asar.unpacked", ...segments));
     kandidaten.push(path.join(app.getAppPath(), ...segments));
     kandidaten.push(path.join(process.resourcesPath, ...segments));
   } else {
     kandidaten.push(path.join(__dirname, ...segments));
   }
-  log.info("Zoeken:", segments.join("/"), "→", kandidaten.length, "kandidaten");
+  log.info("Zoeken:", rel, "→", kandidaten.length, "kandidaten");
   for (var i = 0; i < kandidaten.length; i++) {
     if (fs.existsSync(kandidaten[i])) {
       log.info("Bestand gevonden:", kandidaten[i]);
       return kandidaten[i];
     }
   }
-  log.error("Bestand niet gevonden:", segments.join("/"), "geprobeerd:", kandidaten);
+  log.error("Bestand niet gevonden:", rel, "geprobeerd:", kandidaten);
   return null;
 }
 

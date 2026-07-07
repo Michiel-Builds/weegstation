@@ -39,7 +39,9 @@ if (Test-Path $yml) {
 }
 
 $checks = @(
+  @{ Label = "index.html (app-dist)"; Path = Join-Path $res "app-dist\index.html" },
   @{ Label = "index.html (unpacked)"; Path = Join-Path $res "app.asar.unpacked\dist\index.html" },
+  @{ Label = "preload.js (extraResources)"; Path = Join-Path $res "preload.js" },
   @{ Label = "preload.js (unpacked)"; Path = Join-Path $res "app.asar.unpacked\preload.js" },
   @{ Label = "splash.html"; Path = Join-Path $res "splash.html" },
   @{ Label = "app.asar"; Path = Join-Path $res "app.asar" }

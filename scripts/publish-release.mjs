@@ -9,15 +9,16 @@ import { fileURLToPath } from "url";
 import { execSync } from "child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const distDir = join(root, "release", "electron-dist");
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const tag = `v${version}`;
 const exeName = `WeegStation-Setup-${version}.exe`;
 
 const required = [
-  join(root, "dist", exeName),
-  join(root, "dist", "latest.yml"),
-  join(root, "dist", `${exeName}.blockmap`),
+  join(distDir, exeName),
+  join(distDir, "latest.yml"),
+  join(distDir, `${exeName}.blockmap`),
   join(root, "release", "Weegserver.zip"),
 ];
 
@@ -44,9 +45,9 @@ try {
 }
 
 const uploadFiles = [
-  join(root, "dist", exeName),
-  join(root, "dist", `${exeName}.blockmap`),
-  join(root, "dist", "latest.yml"),
+  join(distDir, exeName),
+  join(distDir, `${exeName}.blockmap`),
+  join(distDir, "latest.yml"),
   join(root, "release", "Weegserver.zip"),
 ].map((f) => `"${f}"`).join(" ");
 

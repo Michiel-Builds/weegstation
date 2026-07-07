@@ -12,13 +12,14 @@ import { createHash } from "crypto";
 import { execSync } from "child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const distDir = join(root, "release", "electron-dist");
 const localOnly = process.argv.includes("--local");
 
 const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const version = pkg.version;
 const exeName = `WeegStation-Setup-${version}.exe`;
-const localExe = join(root, "dist", exeName);
-const latestYml = join(root, "dist", "latest.yml");
+const localExe = join(distDir, exeName);
+const latestYml = join(distDir, "latest.yml");
 const tag = `v${version}`;
 
 function sha512File(filePath) {
@@ -51,8 +52,8 @@ function ok(msg) {
 
 console.log(`\n→ WeegStation release-verificatie v${version}\n`);
 
-if (!existsSync(localExe)) fail(`Lokaal bestand ontbreekt: dist/${exeName}`);
-if (!existsSync(latestYml)) fail("dist/latest.yml ontbreekt — eerst electron-builder draaien");
+if (!existsSync(localExe)) fail(`Lokaal bestand ontbreekt: release/electron-dist/${exeName}`);
+if (!existsSync(latestYml)) fail("release/electron-dist/latest.yml ontbreekt — eerst electron-builder draaien");
 
 const localSize = statSync(localExe).size;
 const localSha = sha512File(localExe);
@@ -94,7 +95,7 @@ try {
   if (remoteSize !== localSize) {
     fail(
       `GitHub exe (${remoteSize}) is ${localSize - remoteSize} bytes KLEINER/GROTER dan lokaal (${localSize}).\n` +
-      "  Herupload met: gh release upload " + tag + ' "dist/' + exeName + '" "dist/latest.yml" "dist/*.blockmap" --clobber'
+      "  Herupload met: gh release upload " + tag + ' "release/electron-dist/' + exeName + '" "release/electron-dist/latest.yml" "release/electron-dist/*.blockmap" --clobber'
     );
   }
 
