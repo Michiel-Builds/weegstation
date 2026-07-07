@@ -1,6 +1,6 @@
 {
   "name": "weegstation-app",
-  "version": "3.1.5",
+  "version": "3.1.6",
   "description": "WeegStation - professioneel weeg- en voorraadsysteem voor metaalrecycling",
   "author": "Michiel Bulters",
   "main": "electron.cjs",
@@ -8,8 +8,12 @@
     "dev": "vite",
     "server": "node server/weegserver.cjs",
     "build": "vite build",
+    "build:win": "vite build && node convert-icon.mjs && electron-builder --win --publish never",
     "dist": "electron-builder",
-    "release": "vite build && electron-builder --win --publish always",
+    "verify-release": "node scripts/verify-release.mjs",
+    "verify-release:local": "node scripts/verify-release.mjs --local",
+    "publish-release": "node scripts/publish-release.mjs",
+    "release": "npm run build:win && npm run pak-weegserver && npm run publish-release",
     "pak-weegserver": "node scripts/pak-weegserver.mjs",
     "electron:dev": "electron ."
   },
@@ -69,7 +73,7 @@
       ],
       "createStartMenuShortcut": true,
       "deleteAppDataOnUninstall": true,
-      "allowToChangeInstallationDirectory": true,
+      "allowToChangeInstallationDirectory": false,
       "include": "build/installer.nsh"
     },
     "publish": {

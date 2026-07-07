@@ -2,25 +2,27 @@ const { app, BrowserWindow, dialog, Menu, ipcMain } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const log = require("electron-log");
+const pkg = require("./package.json");
 
 log.transports.file.level = "info";
 log.transports.console.level = "info";
-log.info("=== WeegStation opgestart ===");
+log.info("=== WeegStation opgestart v" + pkg.version + " ===");
 log.info("App packaged:", app.isPackaged);
 log.info("App path:", app.getAppPath());
 log.info("__dirname:", __dirname);
 
-// Zoek gebundelde bestanden — unpacked én asar (Program Files-installaties missen soms unpacked)
+// Zoek gebundelde bestanden — unpacked eerst (Program Files mist soms unpacked), dan asar
 function vindBestand() {
   const segments = Array.prototype.slice.call(arguments);
   const kandidaten = [];
   if (app.isPackaged) {
-    kandidaten.push(path.join(app.getAppPath(), ...segments));
     kandidaten.push(path.join(process.resourcesPath, "app.asar.unpacked", ...segments));
+    kandidaten.push(path.join(app.getAppPath(), ...segments));
     kandidaten.push(path.join(process.resourcesPath, ...segments));
   } else {
     kandidaten.push(path.join(__dirname, ...segments));
   }
+  log.info("Zoeken:", segments.join("/"), "→", kandidaten.length, "kandidaten");
   for (var i = 0; i < kandidaten.length; i++) {
     if (fs.existsSync(kandidaten[i])) {
       log.info("Bestand gevonden:", kandidaten[i]);

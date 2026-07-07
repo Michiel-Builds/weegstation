@@ -3,8 +3,14 @@ node_modules/
 
 # Build output
 dist/
-build/
 release/
+!release/.gitkeep
+
+# Build assets — splash/icon WEL in git; gegenereerde icon.ico lokaal via convert-icon.mjs
+build/*
+!build/splash.html
+!build/icon-512.png
+!build/installer.nsh
 
 # Signing & secrets — NOOIT in Git!
 signing/*.pfx
