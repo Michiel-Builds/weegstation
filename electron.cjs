@@ -10,15 +10,28 @@ log.info("App packaged:", app.isPackaged);
 log.info("App path:", app.getAppPath());
 log.info("__dirname:", __dirname);
 
-// Resources pad bepalen
-const getResourcesPath = () => {
+// Zoek gebundelde bestanden — unpacked én asar (Program Files-installaties missen soms unpacked)
+function vindBestand() {
+  const segments = Array.prototype.slice.call(arguments);
+  const kandidaten = [];
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "app.asar.unpacked");
+    kandidaten.push(path.join(app.getAppPath(), ...segments));
+    kandidaten.push(path.join(process.resourcesPath, "app.asar.unpacked", ...segments));
+    kandidaten.push(path.join(process.resourcesPath, ...segments));
+  } else {
+    kandidaten.push(path.join(__dirname, ...segments));
   }
-  return __dirname;
-};
+  for (var i = 0; i < kandidaten.length; i++) {
+    if (fs.existsSync(kandidaten[i])) {
+      log.info("Bestand gevonden:", kandidaten[i]);
+      return kandidaten[i];
+    }
+  }
+  log.error("Bestand niet gevonden:", segments.join("/"), "geprobeerd:", kandidaten);
+  return null;
+}
 
-const RESOURCES_PATH = getResourcesPath();
+const RESOURCES_PATH = app.isPackaged ? app.getAppPath() : __dirname;
 log.info("RESOURCES_PATH:", RESOURCES_PATH);
 
 let mainWindow = null;
@@ -112,19 +125,24 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
   const p = posities[hash] || {};
 
   // Check if required files exist
-  const iconPath = path.join(RESOURCES_PATH, "build", "icon.ico");
-  const indexPath = path.join(RESOURCES_PATH, "dist", "index.html");
-  const preloadPath = path.join(RESOURCES_PATH, "preload.js");
+  const iconPath = vindBestand("build", "icon.ico");
+  const indexPath = vindBestand("dist", "index.html");
+  const preloadPath = vindBestand("preload.js");
 
-  if (!fs.existsSync(indexPath)) {
-    log.error("KRITIEKE FOUT: dist/index.html niet gevonden op:", indexPath);
-    dialog.showErrorBox("Fout", "Gebouwde bestanden ontbreken.\nZorg ervoor dat 'npm run build' is uitgevoerd.");
+  if (!indexPath) {
+    log.error("KRITIEKE FOUT: dist/index.html niet gevonden");
+    dialog.showErrorBox(
+      "Installatie onvolledig",
+      "WeegStation kon de app-bestanden niet vinden.\n\n" +
+      "Verwijder WeegStation via Instellingen → Apps en installeer opnieuw met WeegStation-Setup.exe.\n\n" +
+      "Kies bij installatie de standaardmap (niet handmatig naar Program Files)."
+    );
     app.quit();
     return null;
   }
 
-  if (!fs.existsSync(preloadPath)) {
-    log.error("KRITIEKE FOUT: preload.js niet gevonden op:", preloadPath);
+  if (!preloadPath) {
+    log.error("KRITIEKE FOUT: preload.js niet gevonden");
     dialog.showErrorBox("Fout", "Preload script ontbreekt.");
     app.quit();
     return null;
@@ -133,7 +151,7 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
   const opties = {
     width: p.w || defaultW,
     height: p.h || defaultH,
-    icon: fs.existsSync(iconPath) ? iconPath : undefined,
+    icon: iconPath || undefined,
     title: label,
     backgroundColor: "#0f1011",
     show: false,
@@ -202,18 +220,14 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
 }
 
 function createSplash() {
-  const devPath = path.join(RESOURCES_PATH, "build", "splash.html");
-  const packagedPath = process.resourcesPath ? path.join(process.resourcesPath, "splash.html") : null;
-
-  let splashPath = null;
-  if (fs.existsSync(devPath)) {
-    splashPath = devPath;
-  } else if (packagedPath && fs.existsSync(packagedPath)) {
-    splashPath = packagedPath;
-  }
+  const splashPath = vindBestand("build", "splash.html")
+    || (process.resourcesPath ? (function () {
+      var p = path.join(process.resourcesPath, "splash.html");
+      return fs.existsSync(p) ? p : null;
+    })() : null);
 
   if (!splashPath) {
-    log.warn("Splash screen overgeslagen - bestand niet gevonden (dev:", devPath, "packaged:", packagedPath, ")");
+    log.warn("Splash screen overgeslagen - splash.html niet gevonden");
     return;
   }
 
@@ -223,7 +237,7 @@ function createSplash() {
     frame: false,
     alwaysOnTop: true,
     backgroundColor: "#0f1011",
-    icon: path.join(RESOURCES_PATH, "build", "icon.ico"),
+    icon: vindBestand("build", "icon.ico") || undefined,
     webPreferences: { nodeIntegration: false, contextIsolation: true }
   });
   splashWindow.setResizable(false);
