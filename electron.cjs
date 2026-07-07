@@ -25,6 +25,7 @@ let mainWindow = null;
 let bonWindow = null;
 let wegenWindow = null;
 let splashWindow = null;
+let opstartFase = true; // voorkomt vroegtijdig afsluiten tijdens splash → hoofdvenster
 
 const POSITIE_BESTAND = () => path.join(app.getPath("userData"), "posities.json");
 const AUTH_BESTAND = () => path.join(app.getPath("userData"), "auth.json");
@@ -201,6 +202,21 @@ function maakVenster(hash, label, defaultW = 1100, defaultH = 800) {
 }
 
 function createSplash() {
+  const devPath = path.join(RESOURCES_PATH, "build", "splash.html");
+  const packagedPath = process.resourcesPath ? path.join(process.resourcesPath, "splash.html") : null;
+
+  let splashPath = null;
+  if (fs.existsSync(devPath)) {
+    splashPath = devPath;
+  } else if (packagedPath && fs.existsSync(packagedPath)) {
+    splashPath = packagedPath;
+  }
+
+  if (!splashPath) {
+    log.warn("Splash screen overgeslagen - bestand niet gevonden (dev:", devPath, "packaged:", packagedPath, ")");
+    return;
+  }
+
   splashWindow = new BrowserWindow({
     width: 400,
     height: 400,
@@ -212,27 +228,9 @@ function createSplash() {
   });
   splashWindow.setResizable(false);
   splashWindow.center();
-  
-  // Prioriteit: RESOURCES_PATH > process.resourcesPath
-  const devPath = path.join(RESOURCES_PATH, "build", "splash.html");
-  const resourcesPath = process.resourcesPath ? path.join(process.resourcesPath, "splash.html") : null;
-  
-  let splashPath;
-  if (fs.existsSync(devPath)) {
-    splashPath = devPath;
-  } else if (resourcesPath && fs.existsSync(resourcesPath)) {
-    splashPath = resourcesPath;
-  } else {
-    log.warn("Splash screen overgeslagen - bestand niet gevonden");
-    if (splashWindow && !splashWindow.isDestroyed()) {
-      splashWindow.close();
-      splashWindow = null;
-    }
-    return;
-  }
-  
+
   log.info("Splash-pad:", splashPath);
-  splashWindow.loadFile(splashPath).catch((err) => {
+  splashWindow.loadFile(splashPath).catch(function (err) {
     log.error("Splash laden mislukt:", err);
     if (splashWindow && !splashWindow.isDestroyed()) {
       splashWindow.close();
@@ -539,6 +537,7 @@ app.whenReady().then(function () {
       try {
         log.info("→ Hoofdvenster aanmaken...");
         createWindow();
+        opstartFase = false;
         if (!mainWindow) {
           log.error("✗ Venster aanmaking mislukt - mainWindow is null");
           var logPad = "";
@@ -583,7 +582,7 @@ app.whenReady().then(function () {
 });
 
 app.on("window-all-closed", function () {
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform !== "darwin" && !opstartFase) app.quit();
 });
 
 app.on("activate", function () {
