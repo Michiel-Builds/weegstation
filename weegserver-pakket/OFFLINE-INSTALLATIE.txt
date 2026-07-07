@@ -1,0 +1,157 @@
+════════════════════════════════════════════════════════
+   WEEGSTATION — OFFLINE INSTALLATIE WEEGBRUG-PC
+   (geen internet nodig op de weegbrug)
+════════════════════════════════════════════════════════
+
+De weegbrug-PC hoeft GEEN internet. Alleen een netwerkkabel
+naar de kantoor-PC is nodig om live gewicht door te sturen.
+
+
+WAT DOET WAT?
+─────────────
+• Weegbrug-PC  → Node.js weegserver (dit pakket)
+                 Leest gewicht via COM-poort, stuurt live door
+• Kantoor-PC   → WeegStation app (.exe)
+                 Toont live gewicht, slaat wegingen op
+
+Een datakabel tussen beide PC's is een NETWERKVERBINDING.
+Data gaat niet automatisch over — de weegserver moet draaien.
+
+
+════════════════════════════════════════════════════════
+DEEL 1 — VOORBEREIDEN OP KANTOOR-PC (met internet)
+════════════════════════════════════════════════════════
+
+Zet op een USB-stick:
+
+1. Weegserver.zip  (hele map uitpakken mag ook)
+2. Node.js LTS installer (.msi van https://nodejs.org)
+   Bijv.: node-v22.x-x64.msi
+
+Noteer ook de weegserver-sleutel uit WeegStation:
+  • Dashboard → sleutel-veld bovenaan, of
+  • bij eerste installatie op het setup-scherm getoond
+
+
+════════════════════════════════════════════════════════
+DEEL 2 — INSTALLEREN OP WEGBRUG-PC (offline)
+════════════════════════════════════════════════════════
+
+1. Steek USB-stick in weegbrug-PC
+
+2. Installeer Node.js:
+   Dubbelklik node-v22.x-x64.msi → standaardopties → Voltooien
+
+3. Pak Weegserver.zip uit naar:
+   C:\WeegStation\Weegserver\
+
+4. Maak .env aan:
+   Kopieer config.example.env → .env
+
+5. Bewerk .env (Kladblok):
+   WEEGSERVER_KEY=jouw-sleutel-van-kantoor
+   WEEGBRUG_COM=COM5
+
+   COM-poort vinden:
+   Win+X → Apparaatbeheer → Poorten (COM & LPT)
+   Noteer het COM-nummer van de weegbrug.
+
+6. Start de server:
+   Dubbelklik start-weegserver.bat
+   Laat het zwarte venster OPEN staan.
+
+   Verwachte output:
+   Server gestart op poort 3000
+   Lokaal IP: 192.168.x.x:3000
+
+
+════════════════════════════════════════════════════════
+DEEL 3 — NETWERKKABEL TUSSEN BEIDE PC's
+════════════════════════════════════════════════════════
+
+Aansluiting (meest voorkomend):
+  Weegbrug-PC [Ethernet-poort] ── kabel ── [USB-Ethernet dongle] Kantoor-PC
+
+Let op: een USB-kabel DIRECT tussen twee PC's werkt NIET.
+Het moet via Ethernet lopen (ingebouwde poort of USB-dongle).
+
+
+Vaste IP instellen (geen gateway, geen DNS nodig):
+
+  WEGBRUG-PC
+  ──────────
+  Instellingen → Netwerk → Ethernet → IP handmatig
+    IP-adres:     192.168.10.1
+    Subnetmask:   255.255.255.0
+    Gateway:      (leeg laten)
+    DNS:          (leeg laten)
+
+  KANTOOR-PC (alleen de USB-Ethernet adapter!)
+  ─────────────────────────────────────────────
+  Instellingen → Netwerk → [USB Ethernet] → IP handmatig
+    IP-adres:     192.168.10.2
+    Subnetmask:   255.255.255.0
+    Gateway:      (leeg laten)
+
+  WiFi/internet op kantoor blijft gewoon werken.
+
+
+Test vanaf kantoor-PC (PowerShell):
+  ping 192.168.10.1
+
+  Antwoord = kabel en IP kloppen.
+
+
+════════════════════════════════════════════════════════
+DEEL 4 — FIREWALL WEGBRUG-PC (eenmalig)
+════════════════════════════════════════════════════════
+
+PowerShell als Administrator:
+
+  New-NetFirewallRule -DisplayName "WeegStation Weegserver" -Direction Inbound -LocalPort 3000 -Protocol TCP -Action Allow
+
+
+════════════════════════════════════════════════════════
+DEEL 5 — WEEGSTATION OP KANTOOR INSTELLEN
+════════════════════════════════════════════════════════
+
+1. Open WeegStation
+2. Dashboard bovenaan:
+     IP:     192.168.10.1
+     Sleutel: zelfde als WEEGSERVER_KEY in .env
+3. Status wordt groen "Live" als alles klopt
+
+
+════════════════════════════════════════════════════════
+ELKE DAG
+════════════════════════════════════════════════════════
+
+Weegbrug-PC: dubbelklik start-weegserver.bat — venster open laten.
+Kantoor-PC:  WeegStation normaal gebruiken.
+
+
+════════════════════════════════════════════════════════
+PROBLEMEN?
+════════════════════════════════════════════════════════
+
+Ping werkt niet
+  → Verkeerde netwerkadapter op kantoor (kies USB-Ethernet, niet WiFi)
+  → Vaste IP's opnieuw controleren
+
+App blijft "Offline"
+  → Firewall poort 3000 open?
+  → WEEGSERVER_KEY hetzelfde op beide PC's?
+  → start-weegserver.bat draait op weegbrug?
+
+Geen gewicht / simulatie
+  → WEEGBRUG_COM in .env verkeerd → Apparaatbeheer checken
+  → Ander programma gebruikt de COM-poort → sluiten
+
+Node.js niet gevonden
+  → Node.js .msi opnieuw installeren via USB-stick
+
+npm install nodig?
+  → NEE als je Weegserver.zip gebruikt (node_modules zit erin)
+
+
+════════════════════════════════════════════════════════

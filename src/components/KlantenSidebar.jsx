@@ -3,6 +3,7 @@ import {
   getInitKlanten, voegKlantToe, verwijderKlant, updateKlant,
   maakLegeKlant, getZakelijk, getParticulier, importeerCSV
 } from "../data/klanten";
+import { LMA_INGESCHAKELD } from "../data/product";
 import Icon from "./Icon";
 
 const inlineIcon = { verticalAlign: "-2px", marginRight: "5px", flexShrink: 0 };
@@ -227,7 +228,7 @@ export default function KlantenSidebar({ klanten, setKlanten }) {
                   <input value={formData.kvk} onChange={e => setFormData({ ...formData, kvk: e.target.value })} />
                 </div>
               </div>
-              {formData.type === "zakelijk" && (
+              {LMA_INGESCHAKELD && formData.type === "zakelijk" && (
                 <div className="klant-modal-grid-kl">
                   <div className="klant-modal-row-kl">
                     <label>AMICE-bedrijfsnummer</label>

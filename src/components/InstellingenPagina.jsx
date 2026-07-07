@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PRODUCT_NAAM } from "../data/product";
+import { PRODUCT_NAAM, LMA_INGESCHAKELD } from "../data/product";
 import { bewaarBedrijfConfig } from "../utils/bedrijfConfig";
 import { exporteerBackup } from "../utils/opslag";
 import { pasThemaToe } from "../utils/thema";
@@ -72,6 +72,8 @@ export default function InstellingenPagina({ bedrijf, onBijgewerkt, onToast }) {
 
         <p className="setup-hint">Kleuren worden direct toegepast na opslaan. Wachtwoord wijzigen: neem contact op met beheer.</p>
 
+        {LMA_INGESCHAKELD && (
+          <>
         <h3 style={{ marginTop: 24, marginBottom: 4 }}>LMA / AMICE</h3>
         <p className="setup-hint">Gegevens voor de meldingen bij het Landelijk Meldpunt Afvalstoffen.</p>
 
@@ -131,6 +133,8 @@ export default function InstellingenPagina({ bedrijf, onBijgewerkt, onToast }) {
               onChange={e => updateLma("certVerloopt", e.target.value)} />
           </div>
         </div>
+          </>
+        )}
 
         <button className="login-btn" style={{ maxWidth: 280 }} onClick={opslaan} disabled={bezig}>
           {bezig ? "Bezig…" : "Opslaan"}

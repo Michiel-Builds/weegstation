@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { PRODUCT_NAAM } from "../data/product";
+import { PRODUCT_NAAM, LMA_INGESCHAKELD } from "../data/product";
 import { MATERIALEN } from "../data/stamdata";
 import KlantAutocomplete from "./KlantAutocomplete";
 import {
@@ -87,14 +87,12 @@ export default function WeegPagina({
   const [actieveBron, setActieveBron] = useState("weegbrug");
   const [toast, setToast] = useState(null);
   const [opgeslagenFlash, setOpgeslagenFlash] = useState(false);
-  const [afvalstromen] = useState(() => laadAfvalstromen());
-  const [brieven, setBrieven] = useState(() => laadBegeleidingsbrieven());
+  const [afvalstromen] = useState(() => LMA_INGESCHAKELD ? laadAfvalstromen() : []);
+  const [brieven, setBrieven] = useState(() => LMA_INGESCHAKELD ? laadBegeleidingsbrieven() : []);
   const [klantForm, setKlantForm] = useState(null);
-  const [testModus, setTestModus] = useState(false);
-  const [testGewicht, setTestGewicht] = useState("1500");
 
   const serverGewicht = actieveBron === "weegbrug" ? gewichtWeegbrug : gewichtLoods;
-  const huidigGewicht = testModus ? (parseFloat(testGewicht) || 0) : serverGewicht;
+  const huidigGewicht = serverGewicht;
   const gewichtOk = huidigGewicht !== null && huidigGewicht !== undefined && huidigGewicht > 0;
   const stap = huidigeStap(actieveRit);
   const netto = berekenNetto(actieveRit);
@@ -106,10 +104,11 @@ export default function WeegPagina({
   const gekozenStroom = actieveRit.afvalstroomId
     ? afvalstromen.find(s => s.id === actieveRit.afvalstroomId) || null
     : autoStroom;
-  const meldplicht = bepaalMeldplicht({ klantType: actieveRit.klantType, gewichtKg: netto });
-  // Bij een gevaarlijke, meldplichtige stroom is een begeleidingsbrief verplicht
-  const briefVerplicht = meldplicht.meldplichtig && !!gekozenStroom?.gevaarlijk;
-  const briefCompleet = !briefVerplicht || (
+  const meldplicht = LMA_INGESCHAKELD
+    ? bepaalMeldplicht({ klantType: actieveRit.klantType, gewichtKg: netto })
+    : { meldplichtig: false, reden: "" };
+  const briefVerplicht = LMA_INGESCHAKELD && meldplicht.meldplichtig && !!gekozenStroom?.gevaarlijk;
+  const briefCompleet = !LMA_INGESCHAKELD || !briefVerplicht || (
     actieveRit.briefAanwezig &&
     actieveRit.vervoerderNaam.trim() &&
     actieveRit.vihb.trim()
@@ -252,7 +251,7 @@ export default function WeegPagina({
       alert("Vul kenteken, klant, vol, leeg en materiaal in.");
       return;
     }
-    if (briefVerplicht && !briefCompleet) {
+    if (LMA_INGESCHAKELD && briefVerplicht && !briefCompleet) {
       alert("Gevaarlijke afvalstroom: vul de begeleidingsbrief in (vervoerder + VIHB).");
       return;
     }
@@ -267,10 +266,14 @@ export default function WeegPagina({
     const opbrengstPrijs = getOpbrengstPrijsVoorDatum(vandaag, mat?.id, snapshots)
       ?? parseFloat(opbrengst[mat?.id] || 0);
 
-    const meldStatus = bepaalMeldplicht({ klantType: r.klantType, gewichtKg: nettoKg });
-    const stroom = r.afvalstroomId
-      ? afvalstromen.find(s => s.id === r.afvalstroomId) || null
-      : vindAfvalstroom(afvalstromen, r.klantId, r.materiaalId);
+    const meldStatus = LMA_INGESCHAKELD
+      ? bepaalMeldplicht({ klantType: r.klantType, gewichtKg: nettoKg })
+      : null;
+    const stroom = LMA_INGESCHAKELD
+      ? (r.afvalstroomId
+        ? afvalstromen.find(s => s.id === r.afvalstroomId) || null
+        : vindAfvalstroom(afvalstromen, r.klantId, r.materiaalId))
+      : null;
 
     const weging = {
       id: Date.now(),
@@ -280,16 +283,18 @@ export default function WeegPagina({
       klantId: r.klantId ?? null,
       klantType: r.klantType || "",
       materiaal: mat,
-      lma: {
-        meldplichtig: meldStatus.meldplichtig,
-        meldreden: meldStatus.reden,
-        afvalstroomId: stroom?.id ?? null,
-        afvalstroomnummer: stroom?.asn ?? "",
-        euralCode: stroom?.euralCode ?? (mat?.euralCode ?? ""),
-        gevaarlijk: stroom?.gevaarlijk ?? (mat?.gevaarlijk ?? false),
-        verwerkingsmethode: stroom?.verwerkingsmethode ?? (mat?.verwerkingsmethode ?? ""),
-        gemeld: false,
-      },
+      ...(LMA_INGESCHAKELD ? {
+        lma: {
+          meldplichtig: meldStatus.meldplichtig,
+          meldreden: meldStatus.reden,
+          afvalstroomId: stroom?.id ?? null,
+          afvalstroomnummer: stroom?.asn ?? "",
+          euralCode: stroom?.euralCode ?? (mat?.euralCode ?? ""),
+          gevaarlijk: stroom?.gevaarlijk ?? (mat?.gevaarlijk ?? false),
+          verwerkingsmethode: stroom?.verwerkingsmethode ?? (mat?.verwerkingsmethode ?? ""),
+          gemeld: false,
+        },
+      } : {}),
       gewicht: nettoKg,
       vol: volGew,
       leeg: leegGew,
@@ -308,22 +313,23 @@ export default function WeegPagina({
 
     if (onWeging) onWeging(weging);
 
-    // Begeleidingsbrief vastleggen en koppelen aan deze weging + ASN
-    const briefMoet = meldStatus.meldplichtig && (r.briefAanwezig || !!stroom?.gevaarlijk);
-    if (briefMoet && stroom?.asn) {
-      const brief = {
-        ...maakLegeBegeleidingsbrief(brieven),
-        asn: stroom.asn,
-        datum: r.briefDatum || new Date().toISOString().slice(0, 10),
-        kenteken: weging.kenteken,
-        vervoerderNaam: r.vervoerderNaam || r.klantNaam,
-        vihb: r.vihb || "",
-        omschrijving: r.briefOmschrijving || "",
-        aardSamenstelling: r.aardSamenstelling || "",
-        gevaarlijk: !!stroom.gevaarlijk,
-        wegingId: weging.id,
-      };
-      setBrieven(prev => voegBegeleidingsbriefToe(prev, brief));
+    if (LMA_INGESCHAKELD) {
+      const briefMoet = meldStatus.meldplichtig && (r.briefAanwezig || !!stroom?.gevaarlijk);
+      if (briefMoet && stroom?.asn) {
+        const brief = {
+          ...maakLegeBegeleidingsbrief(brieven),
+          asn: stroom.asn,
+          datum: r.briefDatum || new Date().toISOString().slice(0, 10),
+          kenteken: weging.kenteken,
+          vervoerderNaam: r.vervoerderNaam || r.klantNaam,
+          vihb: r.vihb || "",
+          omschrijving: r.briefOmschrijving || "",
+          aardSamenstelling: r.aardSamenstelling || "",
+          gevaarlijk: !!stroom.gevaarlijk,
+          wegingId: weging.id,
+        };
+        setBrieven(prev => voegBegeleidingsbriefToe(prev, brief));
+      }
     }
 
     setOpenRitten(prev => prev.filter(x => x.id !== r.id));
@@ -434,7 +440,7 @@ body { font-family: "Segoe UI", sans-serif; margin: 0; color: #000; font-size: 1
 
         <div className={`sh-live${gewichtOk ? " stabiel" : ""}`}>
           <div className="sh-live-bron">
-            {actieveBron === "weegbrug" ? "🚛 Weegbrug" : "⚖ Loods"} · {testModus ? "🧪 TESTMODUS" : (serverVerbonden ? "● LIVE" : "○ Offline")}
+            {actieveBron === "weegbrug" ? "🚛 Weegbrug" : "⚖ Loods"} · {serverVerbonden ? "● LIVE" : "○ Offline"}
           </div>
           <div className="sh-live-getal">
             {huidigGewicht !== null && huidigGewicht !== undefined ? fmtI(huidigGewicht) : "—"}
@@ -518,7 +524,7 @@ body { font-family: "Segoe UI", sans-serif; margin: 0; color: #000; font-size: 1
           </div>
         </div>
 
-        {actieveRit.klantNaam && (
+        {LMA_INGESCHAKELD && actieveRit.klantNaam && (
           <div className="sh-lma-blok" style={{
             margin: "4px 0 8px", padding: "10px 12px", borderRadius: 8,
             border: "1px solid var(--border, #2a2a2a)",
@@ -663,39 +669,6 @@ body { font-family: "Segoe UI", sans-serif; margin: 0; color: #000; font-size: 1
           >⚖ Loods</button>
         </div>
 
-        <div className="sh-test-blok" style={{
-          marginTop: 14, padding: "10px 12px", borderRadius: 8,
-          border: testModus ? "1px solid #e67e22" : "1px solid var(--border, #2a2a2a)",
-          background: testModus ? "rgba(230,126,34,0.10)" : "transparent",
-        }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 13 }}>
-            <input type="checkbox" checked={testModus} onChange={e => setTestModus(e.target.checked)} />
-            🧪 Testmodus (gewicht simuleren)
-          </label>
-          {testModus && (
-            <>
-              <p style={{ fontSize: 11, opacity: 0.7, margin: "6px 0" }}>
-                Zonder echte weegbrug: typ een gewicht en gebruik VOL/LEEG zoals normaal. Pas het getal aan tussen vol en leeg om netto te krijgen.
-              </p>
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <input
-                  type="number"
-                  value={testGewicht}
-                  onChange={e => setTestGewicht(e.target.value)}
-                  style={{ width: "100%" }}
-                />
-                <span style={{ fontSize: 12, opacity: 0.7 }}>kg</span>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
-                {[300, 1500, 5000, 12000].map(v => (
-                  <button key={v} type="button" className="sh-actie-sec" style={{ padding: "4px 8px", fontSize: 12 }}
-                    onClick={() => setTestGewicht(String(v))}>{v.toLocaleString("nl-NL")}</button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
         <div className="sh-stats">
           <div><span className="sh-stat-lbl">Vandaag</span><span className="sh-stat-val">{wegingen.length} wegingen</span></div>
           <div><span className="sh-stat-lbl">Open</span><span className="sh-stat-val">{openRitten.length}</span></div>
@@ -731,7 +704,7 @@ body { font-family: "Segoe UI", sans-serif; margin: 0; color: #000; font-size: 1
                   <input value={klantForm.kvk} onChange={e => setKlantForm({ ...klantForm, kvk: e.target.value })} />
                 </div>
               </div>
-              {klantForm.type === "zakelijk" && (
+              {LMA_INGESCHAKELD && klantForm.type === "zakelijk" && (
                 <div className="klant-modal-grid-kl">
                   <div className="klant-modal-row-kl">
                     <label>VIHB-nummer</label>

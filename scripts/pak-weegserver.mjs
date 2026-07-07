@@ -30,6 +30,7 @@ cpSync(join(root, "server", "stoplicht.cjs"), join(outDir, "stoplicht.cjs"));
 cpSync(join(pkgDir, "package.json"), join(outDir, "package.json"));
 cpSync(join(pkgDir, "start-weegserver.bat"), join(outDir, "start-weegserver.bat"));
 cpSync(join(pkgDir, "LEESMIJ.txt"), join(outDir, "LEESMIJ.txt"));
+cpSync(join(pkgDir, "OFFLINE-INSTALLATIE.txt"), join(outDir, "OFFLINE-INSTALLATIE.txt"));
 cpSync(join(pkgDir, "config.example.env"), join(outDir, "config.example.env"));
 
 console.log("→ npm install (productie)...\n");

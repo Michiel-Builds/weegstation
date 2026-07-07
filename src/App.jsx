@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./styles.css";
 
-import { PRODUCT_NAAM } from "./data/product";
+import { PRODUCT_NAAM, LMA_INGESCHAKELD } from "./data/product";
 import { MATERIALEN, INIT_PRIJZEN, INIT_OPBRENGST, OPBRENGST_KORTING } from "./data/stamdata";
 import {
   getCachedPrijzenState, bewaarPrijzenInLS, bewaarOpbrengstInLS,
@@ -40,6 +40,12 @@ export default function App() {
   const [authStatus, setAuthStatus] = useState("laden");
   const [gebruiker, setGebruiker] = useState(null);
   const [pagina, setPagina] = useState("dashboard");
+
+  useEffect(() => {
+    if (!LMA_INGESCHAKELD && (pagina === "lma" || pagina === "afvalstromen")) {
+      setPagina("dashboard");
+    }
+  }, [pagina]);
   const [wegingen, setWegingen] = useState(() => laadWegingenUitLS());
   const [bonOmzet, setBonOmzet] = useState(() => laadBonOmzet());
   const [opbrengst, setOpbrengst] = useState(() => getCachedPrijzenState(INIT_OPBRENGST, INIT_PRIJZEN).opbrengst);
@@ -279,8 +285,10 @@ export default function App() {
         ...(kanPrijzen ? [{ key: "prijzen", icon: "euro", label: "Prijzen" }] : []),
         ...(kanPrijzen ? [{ key: "instellingen", icon: "instellingen", label: "Instellingen" }] : []),
         { key: "rapport", icon: "rapport", label: "Rapport" },
-        { key: "afvalstromen", icon: "lijst", label: "Afvalstromen (LMA)" },
-        { key: "lma", icon: "rapport", label: "LMA / Afvalmelding" },
+        ...(LMA_INGESCHAKELD ? [
+          { key: "afvalstromen", icon: "lijst", label: "Afvalstromen (LMA)" },
+          { key: "lma", icon: "rapport", label: "LMA / Afvalmelding" },
+        ] : []),
         { key: "import", icon: "import", label: "XML Import" },
         { key: "formulieren", icon: "formulieren", label: "Formulieren" },
       ],
@@ -601,10 +609,10 @@ export default function App() {
             {pagina === "formulieren" && (
               <FormulierenPagina klanten={klanten} bedrijfsnaam={bedrijf?.bedrijfsnaam || ""} />
             )}
-            {pagina === "afvalstromen" && (
+            {LMA_INGESCHAKELD && pagina === "afvalstromen" && (
               <AfvalstromenPagina klanten={klanten} bedrijf={bedrijf} />
             )}
-            {pagina === "lma" && (
+            {LMA_INGESCHAKELD && pagina === "lma" && (
               <LMAPagina wegingen={wegingen} bedrijf={bedrijf} klanten={klanten} />
             )}
             {pagina === "instellingen" && (
