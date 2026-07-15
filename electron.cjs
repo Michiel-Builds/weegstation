@@ -3,7 +3,13 @@ const path = require("path");
 const fs = require("fs");
 const log = require("electron-log");
 const pkg = require("./package.json");
-const { startSyncApiServer } = require("./server/syncApi.cjs");
+let startSyncApiServer = null;
+try {
+  ({ startSyncApiServer } = require("./server/syncApi.cjs"));
+} catch (err) {
+  // Optioneel: ontbreekt in oudere/incomplete builds — app moet wel starten
+  console.warn("Sync-API module niet geladen:", err.message);
+}
 
 log.transports.file.level = "info";
 log.transports.console.level = "info";
@@ -651,15 +657,19 @@ app.whenReady().then(function () {
           return;
         }
         log.info("✓ Hoofdvenster aangemaakt, wacht 2 seconden voor splash close...");
-        try {
-          startSyncApiServer({
-            userDataDir: app.getPath("userData"),
-            laadDataSleutel,
-            log,
-            versie: pkg.version,
-          });
-        } catch (syncErr) {
-          log.warn("Sync-API start overgeslagen:", syncErr.message);
+        if (typeof startSyncApiServer === "function") {
+          try {
+            startSyncApiServer({
+              userDataDir: app.getPath("userData"),
+              laadDataSleutel,
+              log,
+              versie: pkg.version,
+            });
+          } catch (syncErr) {
+            log.warn("Sync-API start overgeslagen:", syncErr.message);
+          }
+        } else {
+          log.warn("Sync-API niet beschikbaar (module ontbreekt in build)");
         }
         setTimeout(function () {
           try {
