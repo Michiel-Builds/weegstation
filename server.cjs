@@ -22,35 +22,54 @@ try {
 
 function laadDotEnv(pad) {
   try {
-    if (!fs.existsSync(pad)) return;
-    const inhoud = fs.readFileSync(pad, 'utf8');
+    if (!fs.existsSync(pad)) return false;
+    let inhoud = fs.readFileSync(pad, 'utf8');
+    if (inhoud.charCodeAt(0) === 0xfeff) inhoud = inhoud.slice(1);
     inhoud.split('\n').forEach(function (regel) {
+      regel = regel.replace(/\r$/, '');
+      if (!regel.trim() || regel.trim().startsWith('#')) return;
       const m = regel.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-      if (!m || m[1].startsWith('#')) return;
-      if (!process.env[m[1]]) {
-        process.env[m[1]] = m[2].replace(/^["']|["']$/g, '').trim();
-      }
+      if (!m) return;
+      let waarde = m[2].replace(/^["']|["']$/g, '').trim();
+      const hash = waarde.indexOf(' #');
+      if (hash >= 0) waarde = waarde.slice(0, hash).trim();
+      process.env[m[1]] = waarde;
     });
+    return true;
   } catch (e) {
     console.error('Kon .env niet laden:', e.message);
+    return false;
   }
 }
 
-laadDotEnv(path.join(__dirname, '.env'));
+const ENV_PAD = path.join(__dirname, '.env');
+const envGeladen = laadDotEnv(ENV_PAD);
+
+function parseEnvInt(name, fallback) {
+  const v = process.env[name];
+  if (v === undefined || v === '') return fallback;
+  const n = parseInt(v, 10);
+  return isNaN(n) ? fallback : n;
+}
+
+function parseEnvParity(name, fallback) {
+  const v = (process.env[name] || fallback || 'none').toLowerCase();
+  return ['none', 'even', 'odd', 'mark', 'space'].includes(v) ? v : fallback;
+}
 
 // --- Configuratie
 const CONFIG = {
   HTTP_PORT: 3000,
   WEEGBRUG_COM:       process.env.WEEGBRUG_COM || 'COM5',
-  WEEGBRUG_BAUD:      4800,
-  WEEGBRUG_DATA_BITS: 7,
-  WEEGBRUG_STOP_BITS: 1,
-  WEEGBRUG_PARITY:    'even',
-  LOODS_COM:          process.env.LOODS_COM || 'COM2',
-  LOODS_BAUD:         9600,
-  LOODS_DATA_BITS:    8,
-  LOODS_STOP_BITS:    1,
-  LOODS_PARITY:       'none',
+  WEEGBRUG_BAUD:      parseEnvInt('WEEGBRUG_BAUD', 4800),
+  WEEGBRUG_DATA_BITS: parseEnvInt('WEEGBRUG_DATA_BITS', 7),
+  WEEGBRUG_STOP_BITS: parseEnvInt('WEEGBRUG_STOP_BITS', 1),
+  WEEGBRUG_PARITY:    parseEnvParity('WEEGBRUG_PARITY', 'even'),
+  LOODS_COM:          process.env.LOODS_COM || '',
+  LOODS_BAUD:         parseEnvInt('LOODS_BAUD', 9600),
+  LOODS_DATA_BITS:    parseEnvInt('LOODS_DATA_BITS', 8),
+  LOODS_STOP_BITS:    parseEnvInt('LOODS_STOP_BITS', 1),
+  LOODS_PARITY:       parseEnvParity('LOODS_PARITY', 'none'),
   NEWTON_XML_MAP: process.env.NEWTON_XML_MAP || 'C:\\NewTon\\XMLExport\\',
   API_KEY:        process.env.WEEGSERVER_KEY || '',
   ALLOWED_IPS:    parseAllowedIps(process.env.WEEGSERVER_ALLOWED_IPS),
@@ -64,20 +83,6 @@ if (!CONFIG.API_KEY) {
   console.error('(Zelfde sleutel als in WeegStation op kantoor-PC)');
   console.error('');
   process.exit(1);
-}
-
-// --- State
-let huidigGewichtWeegbrug = null;
-let huidigGewichtLoods    = null;
-let wegingenBuffer        = [];
-let verbondenClients      = new Set();
-
-const stoplicht = maakStoplicht(process.env, log);
-
-function stuurWeegbrugGewicht(gewicht, extra) {
-  huidigGewichtWeegbrug = gewicht;
-  stoplicht.onGewicht(gewicht);
-  broadcast(Object.assign({ type: 'gewicht_weegbrug', gewicht, stabiel: gewicht > 0 }, extra || {}));
 }
 
 function log(msg) {
@@ -94,13 +99,6 @@ function serieleFormaat({ baud, dataBits, stopBits, parity }) {
   return baud + ' ' + dataBits + p + stopBits;
 }
 
-let ReadlineParser = null;
-try {
-  ReadlineParser = require('@serialport/parser-readline').ReadlineParser;
-} catch (e) {
-  console.error('ReadlineParser niet beschikbaar:', e.message);
-}
-
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
   for (const name of Object.keys(interfaces)) {
@@ -113,12 +111,154 @@ function getLocalIP() {
   return 'localhost';
 }
 
+// --- State
+let huidigGewichtWeegbrug = null;
+let huidigGewichtLoods    = null;
+let wegingenBuffer        = [];
+let verbondenClients      = new Set();
+let weegbrugSimuleert     = false;
+
+const serieelStatus = {
+  weegbrug: {
+    com: CONFIG.WEEGBRUG_COM,
+    status: 'verbinden',
+    laatsteRegel: '',
+    formaat: serieleFormaat({
+      baud: CONFIG.WEEGBRUG_BAUD,
+      dataBits: CONFIG.WEEGBRUG_DATA_BITS,
+      stopBits: CONFIG.WEEGBRUG_STOP_BITS,
+      parity: CONFIG.WEEGBRUG_PARITY,
+    }),
+  },
+  loods: {
+    com: CONFIG.LOODS_COM || null,
+    status: CONFIG.LOODS_COM ? 'verbinden' : 'niet_geconfigureerd',
+    laatsteRegel: '',
+  },
+};
+
+function isLocalhost(ip) {
+  const n = normalizeIp(ip || '');
+  return n === '127.0.0.1' || n === '::1' || n === 'localhost';
+}
+
+function fmtMonitorGewicht(kg) {
+  if (kg === null || kg === undefined) return '—';
+  const n = Number(kg);
+  if (isNaN(n)) return '—';
+  return n.toFixed(3).replace('.', ',') + ' kg';
+}
+
+function monitorStatusKlasse(status) {
+  if (status === 'verbonden') return 'status-ok';
+  if (status === 'simulatie') return 'status-warn';
+  if (status === 'fout') return 'status-err';
+  if (status === 'niet_geconfigureerd') return 'status-wait';
+  return 'status-wait';
+}
+
+function monitorStatusTekst(com, status, formaat) {
+  const labels = {
+    verbinden: 'Verbinden…',
+    verbonden: 'Verbonden',
+    simulatie: 'Simulatie (geen COM)',
+    fout: 'Fout',
+    niet_geconfigureerd: 'Niet geconfigureerd',
+  };
+  const label = labels[status] || status;
+  const comTekst = com || '—';
+  const extra = formaat ? ' (' + formaat + ')' : '';
+  return comTekst + ' — ' + label + extra;
+}
+
+function renderMonitorHtml() {
+  const data = getMonitorData();
+  const wb = data.serieel.weegbrug;
+  let html = fs.readFileSync(MONITOR_HTML_PAD, 'utf8');
+
+  html = html.replace('{{WEGBRUG_GEWICHT}}', fmtMonitorGewicht(data.weegbrug));
+  html = html.replace('{{WEGBRUG_STATUS_KLASSE}}', monitorStatusKlasse(wb.status));
+  html = html.replace('{{WEGBRUG_STATUS_TEKST}}', monitorStatusTekst(wb.com, wb.status, wb.formaat));
+  html = html.replace(
+    '{{WEGBRUG_DEBUG}}',
+    wb.laatsteRegel ? 'Laatste regel: ' + wb.laatsteRegel : ''
+  );
+
+  const ld = data.serieel.loods;
+  let loodsBlok = '';
+  if (ld && ld.com && ld.status !== 'niet_geconfigureerd') {
+    loodsBlok =
+      '<div class="card"><div class="label">Loods</div>' +
+      '<div class="gewicht" style="font-size:28px">' + fmtMonitorGewicht(data.loods) + '</div>' +
+      '<div class="status ' + monitorStatusKlasse(ld.status) + '">' +
+      monitorStatusTekst(ld.com, ld.status, ld.formaat) + '</div>' +
+      '<div class="debug">' +
+      (ld.laatsteRegel ? 'Laatste regel: ' + ld.laatsteRegel : '') +
+      '</div></div>';
+  }
+  html = html.replace('{{LOODS_BLOK}}', loodsBlok);
+  html = html.replace('{{IP_POORT}}', (data.ip || '—') + ':' + (data.poort || CONFIG.HTTP_PORT));
+  html = html.replace('{{APPS_VERBONDEN}}', String(data.appsVerbonden || 0) + ' actief');
+  html = html.replace('{{TIJD}}', new Date().toLocaleTimeString('nl-NL'));
+
+  return html;
+}
+
+function getMonitorData() {
+  return {
+    weegbrug: huidigGewichtWeegbrug,
+    loods: huidigGewichtLoods,
+    serieel: serieelStatus,
+    appsVerbonden: verbondenClients.size,
+    ip: getLocalIP(),
+    poort: CONFIG.HTTP_PORT,
+    uptime: process.uptime(),
+    stoplicht: stoplicht.getStatus(),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+const MONITOR_HTML_PAD = path.join(__dirname, 'monitor.html');
+
+const stoplicht = maakStoplicht(process.env, log);
+
+function stuurWeegbrugGewicht(gewicht, extra) {
+  huidigGewichtWeegbrug = gewicht;
+  stoplicht.onGewicht(gewicht);
+  broadcast(Object.assign({ type: 'gewicht_weegbrug', gewicht, stabiel: gewicht > 0 }, extra || {}));
+}
+
+let ReadlineParser = null;
+try {
+  ReadlineParser = require('@serialport/parser-readline').ReadlineParser;
+} catch (e) {
+  console.error('ReadlineParser niet beschikbaar:', e.message);
+}
+
 // --- WebSocket server
 const httpServer = http.createServer((req, res) => {
+  const url = (req.url || '/').split('?')[0];
+  const clientIp = req.socket.remoteAddress;
+
+  if (isLocalhost(clientIp) && (url === '/monitor' || url === '/api/monitor')) {
+    if (url === '/monitor') {
+      try {
+        const html = renderMonitorHtml();
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        return res.end(html);
+      } catch (e) {
+        res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' });
+        return res.end('Monitor fout: ' + e.message + '\nPad: ' + MONITOR_HTML_PAD);
+      }
+    }
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Content-Type', 'application/json');
+    return res.end(JSON.stringify(getMonitorData()));
+  }
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/json');
 
-  const clientIp = req.socket.remoteAddress;
   if (!isIpAllowed(clientIp, CONFIG.ALLOWED_IPS)) {
     res.writeHead(403);
     return res.end(JSON.stringify({ error: 'Forbidden' }));
@@ -130,16 +270,16 @@ const httpServer = http.createServer((req, res) => {
     return res.end(JSON.stringify({ error: 'Unauthorized' }));
   }
 
-  if (req.url === '/status') {
+  if (url === '/status') {
     res.end(JSON.stringify({
       weegbrug: huidigGewichtWeegbrug,
       loods:    huidigGewichtLoods,
       wegingen: wegingenBuffer.slice(0, 50),
       uptime:   process.uptime(),
-      versie:   '3.0.0',
+      versie:   '3.2.0',
       stoplicht: stoplicht.getStatus(),
     }));
-  } else if (req.url === '/gewicht') {
+  } else if (url === '/gewicht') {
     res.end(JSON.stringify({
       weegbrug: huidigGewichtWeegbrug,
       loods:    huidigGewichtLoods,
@@ -246,8 +386,44 @@ function registreerWeging(weging) {
   log('Weging: ' + weging.kenteken + ' | ' + weging.materiaal + ' | ' + weging.gewicht + ' kg');
 }
 
+let weegbrugSerieelBuffer = '';
+
+function sanitiseSerieelRegel(regel) {
+  return String(regel || '').replace(/[\x00-\x1F\x7F-\x9F]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function verwerkWeegbrugRegel(rawRegel) {
+  const regel = sanitiseSerieelRegel(rawRegel);
+  if (!regel) return;
+  serieelStatus.weegbrug.laatsteRegel = regel.slice(0, 120);
+  const gewicht = parseBilanciai(regel);
+  if (gewicht !== null) {
+    stuurWeegbrugGewicht(gewicht);
+  }
+}
+
+function koppelWeegbrugDataHandler(port) {
+  port.on('data', (chunk) => {
+    const tekst = chunk.toString('latin1');
+    serieelStatus.weegbrug.laatsteRegel = sanitiseSerieelRegel(tekst).slice(0, 120);
+    weegbrugSerieelBuffer += tekst;
+    const delen = weegbrugSerieelBuffer.split(/\r\n|\r|\n/);
+    weegbrugSerieelBuffer = delen.pop() || '';
+    for (let i = 0; i < delen.length; i++) {
+      verwerkWeegbrugRegel(delen[i]);
+    }
+    if (weegbrugSerieelBuffer.length > 200) {
+      verwerkWeegbrugRegel(weegbrugSerieelBuffer);
+      weegbrugSerieelBuffer = '';
+    }
+  });
+}
+
 // --- RS-232 uitlezen: Weegbrug
 function startWeegbrugSerieel() {
+  serieelStatus.weegbrug.com = CONFIG.WEEGBRUG_COM;
+  serieelStatus.weegbrug.status = 'verbinden';
+  weegbrugSerieelBuffer = '';
   if (!ReadlineParser) {
     log('Weegbrug: serialport niet beschikbaar, simuleren');
     simuleerWeegbrug();
@@ -261,29 +437,28 @@ function startWeegbrugSerieel() {
       parity: CONFIG.WEEGBRUG_PARITY,
     }));
 
-    const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
+    koppelWeegbrugDataHandler(port);
 
-    parser.on('data', (regel) => {
-      const gewicht = parseBilanciai(regel);
-      if (gewicht !== null && gewicht !== huidigGewichtWeegbrug) {
-        stuurWeegbrugGewicht(gewicht);
-      }
+    port.on('open', () => {
+      serieelStatus.weegbrug.status = 'verbonden';
+      log(
+        'Weegbrug verbonden op ' + CONFIG.WEEGBRUG_COM + ' (' + serieelStatus.weegbrug.formaat + ')'
+      );
+      setTimeout(function () {
+        if (huidigGewichtWeegbrug === null && !serieelStatus.weegbrug.laatsteRegel) {
+          log('Geen data van weegbrug — check COM-poort, kabel en instellingen (4800 7E1)');
+          log('Tip: dubbelklik test-com-poort.bat om ruwe data te zien');
+        }
+      }, 8000);
     });
-
-    port.on('open', () => log(
-      'Weegbrug verbonden op ' + CONFIG.WEEGBRUG_COM + ' (' + serieleFormaat({
-        baud: CONFIG.WEEGBRUG_BAUD,
-        dataBits: CONFIG.WEEGBRUG_DATA_BITS,
-        stopBits: CONFIG.WEEGBRUG_STOP_BITS,
-        parity: CONFIG.WEEGBRUG_PARITY,
-      }) + ')'
-    ));
     port.on('error', (err) => {
+      serieelStatus.weegbrug.status = 'fout';
       log('Weegbrug COM fout: ' + err.message + ' - simuleren');
       simuleerWeegbrug();
     });
 
   } catch(e) {
+    serieelStatus.weegbrug.status = 'fout';
     log('Weegbrug COM niet beschikbaar, simuleren');
     simuleerWeegbrug();
   }
@@ -291,12 +466,16 @@ function startWeegbrugSerieel() {
 
 // --- RS-232 uitlezen: Loods weegschaal
 function startLoodsWeegsSchaalSerieel() {
-  if (!ReadlineParser) {
-    log('Loods weegschaal: serialport niet beschikbaar');
+  if (!CONFIG.LOODS_COM) {
+    serieelStatus.loods.status = 'niet_geconfigureerd';
+    log('Loods weegschaal: niet geconfigureerd');
     return;
   }
-  if (!CONFIG.LOODS_COM) {
-    log('Loods weegschaal: niet geconfigureerd');
+  serieelStatus.loods.com = CONFIG.LOODS_COM;
+  serieelStatus.loods.status = 'verbinden';
+  if (!ReadlineParser) {
+    serieelStatus.loods.status = 'fout';
+    log('Loods weegschaal: serialport niet beschikbaar');
     return;
   }
   try {
@@ -310,6 +489,7 @@ function startLoodsWeegsSchaalSerieel() {
     const parser = port.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 
     parser.on('data', (regel) => {
+      serieelStatus.loods.laatsteRegel = String(regel).trim().slice(0, 120);
       const gewicht = parseBilanciai(regel);
       if (gewicht !== null && gewicht !== huidigGewichtLoods) {
         huidigGewichtLoods = gewicht;
@@ -317,28 +497,53 @@ function startLoodsWeegsSchaalSerieel() {
       }
     });
 
-    port.on('open',  () => log('Loods weegschaal verbonden op ' + CONFIG.LOODS_COM));
-    port.on('error', (err) => log('Loods COM fout: ' + err.message));
+    port.on('open', () => {
+      serieelStatus.loods.status = 'verbonden';
+      log('Loods weegschaal verbonden op ' + CONFIG.LOODS_COM);
+    });
+    port.on('error', (err) => {
+      serieelStatus.loods.status = 'fout';
+      log('Loods COM fout: ' + err.message);
+    });
 
   } catch(e) {
+    serieelStatus.loods.status = 'fout';
     log('Loods COM niet beschikbaar');
   }
 }
 
-// --- Bilanciai protocol parser
+// --- Bilanciai / industrieel protocol parser
 function parseBilanciai(regel) {
-  regel = regel.trim();
-  let match = regel.match(/([+-]?\d+\.?\d*)\s*kg/i);
-  if (match) return parseFloat(match[1]);
-  match = regel.match(/ST,GS,[+-]?(\d+)/);
-  if (match) return parseInt(match[1]);
+  regel = sanitiseSerieelRegel(regel);
+  if (!regel) return null;
+
+  // "$     20" — gewicht na $ (jullie weegbrug-formaat, kg)
+  let match = regel.match(/^\$\s*(\d+(?:[.,]\d+)?)/);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+
+  match = regel.match(/([+-]?\d+[.,]?\d*)\s*kg/i);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+
+  match = regel.match(/ST,GS,\s*[+-]?(\d+(?:[.,]\d+)?)/i);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+
+  match = regel.match(/GS,\s*[+-]?(\d+(?:[.,]\d+)?)/i);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+
+  match = regel.match(/([+-]?\d+[.,]\d+)/);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+
   match = regel.match(/^[+-]?\s*(\d+)\s*$/);
-  if (match) return parseInt(match[1]);
+  if (match) return parseInt(match[1], 10);
+
   return null;
 }
 
 // --- Simulatie (fallback)
 function simuleerWeegbrug() {
+  if (weegbrugSimuleert) return;
+  weegbrugSimuleert = true;
+  serieelStatus.weegbrug.status = 'simulatie';
   log('Simulatiemodus actief (geen echte weegbrug)');
   let gewicht = 0;
   let richting = 1;
@@ -381,9 +586,21 @@ function startXMLWatcher() {
 
 // --- Start alles op
 httpServer.listen(CONFIG.HTTP_PORT, () => {
-  log('=== WeegStation - Weegserver v3.0 ===');
+  log('=== WeegStation - Weegserver v3.1.11 ===');
+  if (envGeladen) {
+    log('.env geladen: ' + ENV_PAD);
+  } else {
+    log('WAARSCHUWING: geen .env in ' + ENV_PAD);
+  }
   log('Server gestart op poort ' + CONFIG.HTTP_PORT);
+  log(
+    'COM-poort weegbrug: ' + CONFIG.WEEGBRUG_COM +
+    ' (' + serieelStatus.weegbrug.formaat + ')' +
+    (process.env.WEEGBRUG_COM ? ', uit .env' : ', standaard')
+  );
+  if (CONFIG.LOODS_COM) log('COM-poort loods: ' + CONFIG.LOODS_COM);
   log('Lokaal IP: ' + getLocalIP() + ':' + CONFIG.HTTP_PORT);
+  log('Monitor: http://localhost:' + CONFIG.HTTP_PORT + '/monitor');
   if (CONFIG.ALLOWED_IPS) {
     log('IP-whitelist actief: ' + CONFIG.ALLOWED_IPS.join(', '));
   }

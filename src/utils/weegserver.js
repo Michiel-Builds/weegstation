@@ -48,6 +48,10 @@ export function stuurStoplicht(ws, kleur) {
 
 export function magWeegserverVerbinden() {
   if (typeof window === "undefined") return false;
+  try {
+    const cap = window.Capacitor;
+    if (cap?.isNativePlatform?.()) return true;
+  } catch {}
   if (navigator.userAgent?.includes("Electron")) return true;
   const host = window.location.hostname;
   return (

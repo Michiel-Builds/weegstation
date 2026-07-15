@@ -24,7 +24,7 @@ const lines = [
   "  LOODS_COM:     process.env.LOODS_COM    || 'COM2',",
   "  LOODS_BAUD:    9600,",
   "  NEWTON_XML_MAP: process.env.NEWTON_XML_MAP || 'C:\\\\NewTon\\\\XMLExport\\\\',",
-  "  API_KEY:        process.env.WEEGSERVER_KEY || 'bulters-2024',",
+  "  API_KEY:        process.env.WEEGSERVER_KEY || '',",
   "};",
   "",
   "// --- State",

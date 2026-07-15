@@ -31,6 +31,7 @@ export default function WegenVenster() {
   const ip = laadServerIP();
 
   const { wsRef, verbonden: serverVerbonden } = useWeegserverWs({
+    modus: "volger",
     actief: !!sleutel.trim(),
     ip,
     sleutel,

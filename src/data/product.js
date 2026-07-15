@@ -1,6 +1,6 @@
 /** Vaste productnaam — niet per klant aanpasbaar. */
 export const PRODUCT_NAAM = "WeegStation";
-export const PRODUCT_VERSIE = "3.1.10";
+export const PRODUCT_VERSIE = "3.2.0";
 export const PRODUCT_OMSCHRIJVING = "Professioneel weeg- en voorraadsysteem voor metaalrecycling";
 
 /** LMA/AMICE-koppeling — zet op true om afvalmeldingen weer te activeren. */

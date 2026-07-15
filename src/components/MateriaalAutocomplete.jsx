@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { MATERIALEN } from "../data/stamdata";
 
 export default function MateriaalAutocomplete({
-  value, onChange, onSelect, placeholder = "bijv. Koper",
+  value, onChange, onSelect, placeholder = "bijv. Koper", modus = "particulier",
 }) {
   const [open, setOpen] = useState(false);
   const [filtering, setFiltering] = useState(false);

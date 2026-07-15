@@ -127,7 +127,32 @@ ELKE DAG
 ════════════════════════════════════════════════════════
 
 Weegbrug-PC: dubbelklik start-weegserver.bat — venster open laten.
+             De browser opent automatisch het monitor-scherm.
 Kantoor-PC:  WeegStation normaal gebruiken.
+
+
+════════════════════════════════════════════════════════
+MONITOR CONTROLEREN (op weegbrug-PC)
+════════════════════════════════════════════════════════
+
+Na start-weegserver.bat opent de browser automatisch:
+  http://localhost:3000/monitor
+
+Je ziet daar:
+  • Live gewicht weegbrug (en loods indien aangesloten)
+  • COM-poort + status (verbonden / simulatie / fout)
+  • IP-adres voor invullen op kantoor-PC
+  • Aantal kantoor-apps verbonden
+
+Browser per ongeluk gesloten?
+  Dubbelklik open-monitor.bat
+
+Welke COM-poorten zijn beschikbaar?
+  Dubbelklik lijst-com-poorten.bat
+  Zet het juiste nummer in .env als WEEGBRUG_COM=COM5
+
+Het monitor-scherm werkt offline — geen internet nodig.
+Alleen toegankelijk op de weegbrug-PC zelf (localhost).
 
 
 ════════════════════════════════════════════════════════

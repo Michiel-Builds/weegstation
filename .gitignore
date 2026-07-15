@@ -3,8 +3,10 @@ node_modules/
 
 # Build output
 dist/
+dist-mobile/
 release/
 !release/.gitkeep
+backup/
 
 # Build assets — splash/icon WEL in git; gegenereerde icon.ico lokaal via convert-icon.mjs
 build/*
@@ -26,3 +28,4 @@ signing/*.p12
 .DS_Store
 Thumbs.db
 .env
+weegbrug.env

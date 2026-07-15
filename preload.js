@@ -33,6 +33,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   dataLaadAlles: (keys) => ipcRenderer.invoke("data-laad-alles", keys),
   dataBewaar: (key, value) => ipcRenderer.invoke("data-bewaar", { key, value }),
   dataExporteer: (opties) => ipcRenderer.invoke("data-exporteer", opties),
+  dataImporteer: (opties) => ipcRenderer.invoke("data-importeer", opties),
+  dataPad: () => ipcRenderer.invoke("data-pad"),
+  bonPdfOpslaan: (opties) => ipcRenderer.invoke("bon-pdf-opslaan", opties),
+  kiesMap: (opties) => ipcRenderer.invoke("kies-map", opties),
 
   // LMA / AMICE
   lmaExporteerXml: (opties) => ipcRenderer.invoke("lma-exporteer-xml", opties),

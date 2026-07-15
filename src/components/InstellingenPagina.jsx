@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PRODUCT_NAAM, LMA_INGESCHAKELD } from "../data/product";
 import { bewaarBedrijfConfig } from "../utils/bedrijfConfig";
-import { exporteerBackup } from "../utils/opslag";
+import { exporteerBackup, importeerBackup, haalDataOpslagPad } from "../utils/opslag";
 import { pasThemaToe } from "../utils/thema";
 import { DEFAULT_ACCENT, DEFAULT_ACCENT2, DEFAULT_ACCENT_LIGHT, DEFAULT_ACCENT2_LIGHT } from "../data/product";
 
 export default function InstellingenPagina({ bedrijf, onBijgewerkt, onToast }) {
   const [cfg, setCfg] = useState({ ...bedrijf });
   const [bezig, setBezig] = useState(false);
+  const [dataPad, setDataPad] = useState(null);
+
+  useEffect(() => {
+    haalDataOpslagPad().then(p => setDataPad(p));
+  }, []);
 
   function update(veld, waarde) {
     setCfg(prev => ({ ...prev, [veld]: waarde }));
@@ -25,6 +30,15 @@ export default function InstellingenPagina({ bedrijf, onBijgewerkt, onToast }) {
       accent: licht ? DEFAULT_ACCENT_LIGHT : DEFAULT_ACCENT,
       accent2: licht ? DEFAULT_ACCENT2_LIGHT : DEFAULT_ACCENT2,
     }));
+  }
+
+  async function kiesBonnenMap() {
+    if (!window.electronAPI?.kiesMap) {
+      onToast?.("Map kiezen alleen in de desktop-app");
+      return;
+    }
+    const res = await window.electronAPI.kiesMap({ titel: "Map voor bon-PDF's" });
+    if (res?.ok && res.pad) update("bonnenBasismap", res.pad);
   }
 
   async function opslaan() {
@@ -68,6 +82,21 @@ export default function InstellingenPagina({ bedrijf, onBijgewerkt, onToast }) {
             <label className="login-label">Accentkleur</label>
             <input type="color" className="kleur-input" value={cfg.accent2} onChange={e => update("accent2", e.target.value)} />
           </div>
+        </div>
+
+        <h3 style={{ marginTop: 24, marginBottom: 4 }}>Bon-PDF opslag</h3>
+        <p className="setup-hint">
+          Standaard: Documenten/WeegStation/Bonnen/{"{Klantnaam}"}/. Laat leeg voor de standaardmap.
+        </p>
+        <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+          <input
+            className="login-input"
+            style={{ flex: 1, marginBottom: 0 }}
+            value={cfg.bonnenBasismap || ""}
+            onChange={e => update("bonnenBasismap", e.target.value)}
+            placeholder="Standaardmap (Documenten/WeegStation/Bonnen)"
+          />
+          <button type="button" className="login-btn" style={{ maxWidth: 120, margin: 0 }} onClick={kiesBonnenMap}>Map…</button>
         </div>
 
         <p className="setup-hint">Kleuren worden direct toegepast na opslaan. Wachtwoord wijzigen: neem contact op met beheer.</p>
@@ -141,11 +170,30 @@ export default function InstellingenPagina({ bedrijf, onBijgewerkt, onToast }) {
         </button>
 
         <h3 style={{ marginTop: 24, marginBottom: 4 }}>Back-up</h3>
-        <p className="setup-hint">Exporteer alle wettelijk te bewaren gegevens (wegingen, afvalstromen, meldingen, begeleidingsbrieven) naar een back-upbestand.</p>
-        <button className="login-btn" style={{ maxWidth: 280 }} onClick={async () => {
-          const res = await exporteerBackup();
-          onToast?.(res?.ok ? "Back-up opgeslagen ✓" : (res?.geannuleerd ? "Back-up geannuleerd" : ("Back-up mislukt: " + (res?.fout || ""))));
-        }}>Back-up exporteren</button>
+        {dataPad && (
+          <p className="setup-hint" style={{ fontFamily: "var(--mono)", fontSize: 11, wordBreak: "break-all" }}>
+            Opslaglocatie: {dataPad}
+          </p>
+        )}
+        <p className="setup-hint">
+          Exporteer alle bedrijfsdata: wegingen, afvalstromen, meldingen, begeleidingsbrieven,
+          klanten, bon-omzet, open bonnen, open ritten en actieve weegsessies.
+        </p>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="login-btn" style={{ maxWidth: 280 }} onClick={async () => {
+            const res = await exporteerBackup();
+            onToast?.(res?.ok ? "Back-up opgeslagen ✓" : (res?.geannuleerd ? "Back-up geannuleerd" : ("Back-up mislukt: " + (res?.fout || ""))));
+          }}>Back-up exporteren</button>
+          <button className="login-btn" style={{ maxWidth: 280 }} onClick={async () => {
+            if (!confirm("Back-up importeren overschrijft bestaande data. Doorgaan?")) return;
+            const res = await importeerBackup();
+            if (res?.ok) {
+              onToast?.(`Back-up geïmporteerd (${res.count} onderdelen) — herstart de app om alles te laden`);
+            } else {
+              onToast?.(res?.geannuleerd ? "Import geannuleerd" : ("Import mislukt: " + (res?.fout || "")));
+            }
+          }}>Back-up importeren</button>
+        </div>
       </div>
     </div>
   );

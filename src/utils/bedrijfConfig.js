@@ -24,6 +24,7 @@ export const DEFAULT_BEDRIJF_CONFIG = {
   thema: "dark",
   accent: DEFAULT_ACCENT,
   accent2: DEFAULT_ACCENT2,
+  bonnenBasismap: "",
   lma: { ...DEFAULT_LMA_CONFIG },
 };
 
@@ -66,6 +67,7 @@ function normaliseer(cfg) {
     thema,
     accent: cfg.accent || defaults.accent,
     accent2: cfg.accent2 || defaults.accent2,
+    bonnenBasismap: String(cfg.bonnenBasismap || "").trim(),
     lma: normaliseerLma(cfg.lma),
   };
 }

@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import { maakBonnummer, printBon as printBonUtil } from "../utils/helpers";
-import { exporteerBonNaarPdf } from "../utils/pdfExport";
+import { exporteerBonNaarPdf, exporteerBonNaarPdfBase64 } from "../utils/pdfExport";
 import { registreerBonOmzet } from "../utils/bonOmzet";
 import { PRODUCT_NAAM } from "../data/product";
 import { MATERIALEN } from "../data/stamdata";
 import KlantAutocomplete from "./KlantAutocomplete";
 import MateriaalAutocomplete from "./MateriaalAutocomplete";
 
+import { bewaarDuurzaam } from "../utils/opslag";
+
 const AANTAL_RIJEN = 15;
-const STORAGE_KEY = "ws-bonnen";
+export const BONNEN_LS_KEY = "ws-bonnen";
+const STORAGE_KEY = BONNEN_LS_KEY;
 
 function fmt(n)  { return Number(n).toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtI(n) { return Number(n).toLocaleString("nl-NL", { maximumFractionDigits: 0 }); }
@@ -88,19 +91,14 @@ function maakLegeBon(id) {
       legitimatieType: "", legitimatieNummer: ""
     },
     klantType: "bedrijf",
+    klantId: null,
     regels: Array.from({ length: AANTAL_RIJEN }, () => ({ materiaal: "", vol: "", leeg: "", aftrek: "", prijs: "" })),
     toegevoegd: [],
   };
 }
 
 function bewaarBonnen(bonnen, actieveId) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      bonnen: bonnen,
-      actieveId: actieveId
-    }));
-  } catch (e) {}
+  bewaarDuurzaam(STORAGE_KEY, { bonnen, actieveId });
 }
 
 function vindMateriaalOpNaam(naam) {
@@ -127,7 +125,7 @@ function laadBonnen() {
   return null;
 }
 
-export default function BonBouwer({ prijzen, wegingen = [], klanten = [], bedrijfsnaam = "WeegStation" }) {
+export default function BonBouwer({ prijzen, wegingen = [], klanten = [], bedrijfsnaam = "WeegStation", bonnenBasismap = "" }) {
   const [bonnen, setBonnen] = useState([maakLegeBon(1)]);
   const [actieveBonId, setActieveBonId] = useState(1);
   const [toast, setToast] = useState(null);
@@ -210,7 +208,8 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [], bedrij
         updateActieveBon(prev => ({
           ...prev,
           klant: { ...prev.klant, ...klantNaarForm(k) },
-          klantType: k.type === "particulier" ? "particulier" : "bedrijf"
+          klantType: k.type === "particulier" ? "particulier" : "bedrijf",
+          klantId: k.id ?? null,
         }));
         toonToast(`✓ ${k.naam} ingevuld`);
       }
@@ -280,7 +279,8 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [], bedrij
     updateActieveBon(prev => ({
       ...prev,
       klant: { ...prev.klant, ...klantNaarForm(k) },
-      klantType: k.type === "particulier" ? "particulier" : "bedrijf"
+      klantType: k.type === "particulier" ? "particulier" : "bedrijf",
+      klantId: k.id ?? null,
     }));
     toonToast(`✓ ${k.naam} ingevuld`);
   }
@@ -421,32 +421,67 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [], bedrij
   }
 
   // PDF OPSLAAN — bon wordt WEL gesloten
-  function opslaanAlsPdf() {
+  async function opslaanAlsPdf() {
     const regels = haalGeldigeRegels();
     if (regels.length === 0) { alert("Vul minstens één regel in."); return; }
     if (actieveBon.klantType === "bedrijf" && !actieveBon.klant.bedrijf.trim()) { alert("Vul een bedrijfsnaam in."); return; }
     if (actieveBon.klantType === "particulier" && !actieveBon.klant.naam.trim()) { alert("Vul een naam in."); return; }
-    const bestandsnaam = exporteerBonNaarPdf({
+
+    const pdfOpts = {
       bonnummer: actieveBon.bonnummer, klant: actieveBon.klant, klantType: actieveBon.klantType,
       regels: regels.map(r => ({
         materiaal: { naam: r.materiaal }, kenteken: "–", totaal: r.totaal, prijs: r.prijs,
+        subtotaal: r.subtotaal,
       })),
-      totaalKg, totaalEuro, bedrijfsnaam
-    });
+      totaalKg, totaalEuro, bedrijfsnaam,
+    };
+
+    const klantNaam = actieveBon.klantType === "bedrijf"
+      ? actieveBon.klant.bedrijf.trim()
+      : actieveBon.klant.naam.trim();
+
+    let bestandsnaam = "";
+    let opgeslagenPad = "";
+
+    if (window.electronAPI?.bonPdfOpslaan) {
+      const { base64, bestandsnaam: naam } = exporteerBonNaarPdfBase64(pdfOpts);
+      bestandsnaam = naam;
+      const res = await window.electronAPI.bonPdfOpslaan({
+        pdfBase64: base64,
+        klantNaam,
+        bonnummer: actieveBon.bonnummer,
+        basismap: bonnenBasismap || undefined,
+      });
+      if (res?.ok) {
+        opgeslagenPad = res.pad;
+      } else if (!res?.geannuleerd) {
+        bestandsnaam = exporteerBonNaarPdf(pdfOpts);
+        toonToast("⚠ IPC mislukt — browser-download gebruikt");
+      }
+    } else {
+      bestandsnaam = exporteerBonNaarPdf(pdfOpts);
+    }
+
     registreerBonOmzet({
       bonnummer: actieveBon.bonnummer,
       totaalEuro,
       totaalKg,
       klant: actieveBon.klant,
       klantType: actieveBon.klantType,
+      klantId: actieveBon.klantId ?? null,
       regels: regels.map(r => ({
         materiaal: r.materiaal,
+        vol: r.vol,
+        leeg: r.leeg,
+        aftrek: r.aftrek,
         kg: r.totaal,
+        nettoKg: r.totaal,
         subtotaal: r.subtotaal,
         prijs: r.prijs,
       })),
     });
-    toonToast("💾 PDF: " + bestandsnaam);
+
+    toonToast(opgeslagenPad ? ("💾 PDF: " + opgeslagenPad) : ("💾 PDF: " + bestandsnaam));
     setTimeout(() => sluitActieveBonEnGaNaarVolgende(), 800);
   }
 
@@ -602,6 +637,11 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [], bedrij
                   Particulier: kies een metaalsoort — €/kg (inkoop) wordt automatisch ingevuld vanuit Prijzen
                 </div>
               )}
+              {isBedrijf && (
+                <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)", marginBottom: 8 }}>
+                  Bedrijf: kies materiaal uit de lijst — prijs handmatig invullen
+                </div>
+              )}
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr>
@@ -622,29 +662,23 @@ export default function BonBouwer({ prijzen, wegingen = [], klanten = [], bedrij
                     return (
                       <tr key={i} style={{ opacity: actief ? 1 : 0.55 }}>
                         <td style={{ ...td(), position: "relative" }}>
-                          {isBedrijf ? (
-                            <input
-                              style={inputStyle(false)}
-                              placeholder="bijv. Koper"
-                              value={r.materiaal}
-                              onChange={e => updateRij(i, "materiaal", e.target.value)}
-                            />
-                          ) : (
-                            <MateriaalAutocomplete
-                              value={r.materiaal}
-                              onChange={v => updateRij(i, "materiaal", v)}
-                              onSelect={m => {
-                                updateActieveBon(prev => ({
-                                  ...prev,
-                                  regels: prev.regels.map((regel, ri) => ri !== i ? regel : {
-                                    ...regel,
-                                    materiaal: m.naam,
-                                    prijs: prijzen[m.id] !== undefined ? String(prijzen[m.id]) : regel.prijs,
-                                  }),
-                                }));
-                              }}
-                            />
-                          )}
+                          <MateriaalAutocomplete
+                            modus={isBedrijf ? "bedrijf" : "particulier"}
+                            value={r.materiaal}
+                            onChange={v => updateRij(i, "materiaal", v)}
+                            onSelect={m => {
+                              updateActieveBon(prev => ({
+                                ...prev,
+                                regels: prev.regels.map((regel, ri) => ri !== i ? regel : {
+                                  ...regel,
+                                  materiaal: m.naam,
+                                  prijs: !isBedrijf && prijzen[m.id] !== undefined
+                                    ? String(prijzen[m.id])
+                                    : regel.prijs,
+                                }),
+                              }));
+                            }}
+                          />
                         </td>
                         <td style={td(true)}>
                           <input style={inputStyle(true)} type="text" inputMode="decimal" pattern="[0-9]*\.?[0-9]*" placeholder="0"

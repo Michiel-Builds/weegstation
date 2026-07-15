@@ -3,6 +3,7 @@ const path = require("path");
 const fs = require("fs");
 const log = require("electron-log");
 const pkg = require("./package.json");
+const { startSyncApiServer } = require("./server/syncApi.cjs");
 
 log.transports.file.level = "info";
 log.transports.console.level = "info";
@@ -103,14 +104,16 @@ function laadDataSleutel(key) {
 function bewaarDataSleutel(key, value) {
   zorgVoorMap(DATA_DIR());
   const f = dataBestand(key);
+  const tmp = f + ".tmp";
   try {
-    // Roteer huidige naar .bak voordat we overschrijven
     if (fs.existsSync(f)) {
       try { fs.copyFileSync(f, f + ".bak"); } catch (e) { log.warn("Back-up maken mislukt:", e); }
     }
-    fs.writeFileSync(f, JSON.stringify(value, null, 2), "utf-8");
+    fs.writeFileSync(tmp, JSON.stringify(value, null, 2), "utf-8");
+    fs.renameSync(tmp, f);
     return true;
   } catch (e) {
+    try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch (e2) {}
     log.error("Data bewaren mislukt voor", key, e);
     throw e;
   }
@@ -427,6 +430,74 @@ ipcMain.handle("data-exporteer", async (event, { keys, suggestedName } = {}) => 
   }
 });
 
+ipcMain.handle("data-importeer", async (event, { keys } = {}) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: "Back-up importeren",
+      filters: [{ name: "JSON", extensions: ["json"] }],
+      properties: ["openFile"],
+    });
+    if (canceled || !filePaths?.[0]) return { ok: false, geannuleerd: true };
+    const inhoud = JSON.parse(fs.readFileSync(filePaths[0], "utf-8"));
+    const data = inhoud.data || inhoud;
+    const teImporteren = Array.isArray(keys) ? keys : Object.keys(data);
+    let count = 0;
+    teImporteren.forEach(k => {
+      if (data[k] !== undefined && data[k] !== null) {
+        bewaarDataSleutel(k, data[k]);
+        count++;
+      }
+    });
+    return { ok: true, pad: filePaths[0], count };
+  } catch (err) {
+    log.error("data-importeer fout:", err);
+    return { ok: false, fout: err.message };
+  }
+});
+
+ipcMain.handle("data-pad", () => DATA_DIR());
+
+function veiligeMapNaam(naam) {
+  return String(naam || "Onbekend")
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80) || "Onbekend";
+}
+
+ipcMain.handle("bon-pdf-opslaan", async (event, { pdfBase64, klantNaam, bonnummer, basismap } = {}) => {
+  try {
+    const root = basismap || path.join(app.getPath("documents"), "WeegStation", "Bonnen");
+    const map = path.join(root, veiligeMapNaam(klantNaam));
+    zorgVoorMap(map);
+    const datum = new Date().toISOString().slice(0, 10);
+    const bestand = path.join(map, "Bon-" + bonnummer + "-" + datum + ".pdf");
+    const buf = Buffer.from(pdfBase64, "base64");
+    fs.writeFileSync(bestand, buf);
+    return { ok: true, pad: bestand, map };
+  } catch (err) {
+    log.error("bon-pdf-opslaan fout:", err);
+    return { ok: false, fout: err.message };
+  }
+});
+
+ipcMain.handle("kies-map", async (event, { titel, defaultPath } = {}) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: titel || "Map kiezen",
+      defaultPath: defaultPath || app.getPath("documents"),
+      properties: ["openDirectory", "createDirectory"],
+    });
+    if (canceled || !filePaths?.[0]) return { ok: false, geannuleerd: true };
+    return { ok: true, pad: filePaths[0] };
+  } catch (err) {
+    log.error("kies-map fout:", err);
+    return { ok: false, fout: err.message };
+  }
+});
+
 // --- LMA / AMICE IPC ---
 function laadLmaModules() {
   const xmlBouwer = require(path.join(__dirname, "server", "lma", "xmlBouwer.cjs"));
@@ -580,6 +651,16 @@ app.whenReady().then(function () {
           return;
         }
         log.info("✓ Hoofdvenster aangemaakt, wacht 2 seconden voor splash close...");
+        try {
+          startSyncApiServer({
+            userDataDir: app.getPath("userData"),
+            laadDataSleutel,
+            log,
+            versie: pkg.version,
+          });
+        } catch (syncErr) {
+          log.warn("Sync-API start overgeslagen:", syncErr.message);
+        }
         setTimeout(function () {
           try {
             if (splashWindow && !splashWindow.isDestroyed()) {

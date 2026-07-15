@@ -3,7 +3,10 @@
 // Opslag in localStorage (sleutel: ws-klanten)
 // =============================================
 
-const STORAGE_KEY = "ws-klanten";
+import { bewaarDuurzaam } from "../utils/opslag";
+
+export const KLANTEN_LS_KEY = "ws-klanten";
+const STORAGE_KEY = KLANTEN_LS_KEY;
 
 function laadKlanten() {
   try {
@@ -39,11 +42,7 @@ function maakVoorbeeldKlanten() {
 }
 
 function bewaarKlanten(klanten) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(klanten));
-  } catch (e) {
-    console.error("Fout bij bewaren klanten:", e);
-  }
+  bewaarDuurzaam(STORAGE_KEY, klanten);
 }
 
 function nieuwId(klanten) {

@@ -9,7 +9,7 @@ function fmtI(n) {
   return Number(n).toLocaleString("nl-NL", { maximumFractionDigits: 0 });
 }
 
-export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaalKg, totaalEuro, bedrijfsnaam = "WeegStation" }) {
+export function maakBonPdfDoc({ bonnummer, klant, klantType, regels, totaalKg, totaalEuro, bedrijfsnaam = "WeegStation" }) {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -20,10 +20,9 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
   const margin = 15;
   let y = 18;
 
-  // === KOP ===
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.setTextColor(46, 125, 50); // var(--accent)
+  doc.setTextColor(46, 125, 50);
   doc.text(bedrijfsnaam, pageW / 2, y, { align: "center" });
 
   y += 6;
@@ -32,7 +31,6 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
   doc.setTextColor(100);
   doc.text(bedrijfsnaam + " · Dit document is automatisch gegenereerd", pageW / 2, y, { align: "center" });
 
-  // === BON-NUMMER + DATUM ===
   y += 12;
   doc.setDrawColor(180);
   doc.setLineWidth(0.3);
@@ -51,7 +49,6 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
   doc.setTextColor(100);
   doc.text(datum + "  ·  " + tijd, pageW - margin, y, { align: "right" });
 
-  // === KLANTGEGEVENS ===
   y += 8;
   doc.setFillColor(249, 249, 249);
   doc.rect(margin, y, pageW - 2 * margin, klantType === "bedrijf" ? 38 : 32, "F");
@@ -101,14 +98,13 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
 
   y = Math.max(y, 60) + 8;
 
-  // === TABEL ===
   const tableData = regels.map((r, i) => [
     String(i + 1),
     r.materiaal?.naam || r.materiaal || "—",
     r.kenteken || "—",
     fmtI(r.totaal || r.gewicht) + " kg",
     "€ " + fmt(r.prijs) + "/kg",
-    "€ " + fmt(r.totaal || (r.gewicht * r.prijs)),
+    "€ " + fmt(r.subtotaal ?? (r.totaal || r.gewicht) * r.prijs),
   ]);
 
   autoTable(doc, {
@@ -143,7 +139,6 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
     },
   });
 
-  // === HANDTEKENING ===
   const finalY = doc.lastAutoTable.finalY + 25;
   doc.setDrawColor(150);
   doc.setLineDashPattern([2, 2], 0);
@@ -163,7 +158,6 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
   doc.setTextColor(140);
   doc.text("Handtekening klant", margin + 25, finalY + 22);
 
-  // === FOOTER ===
   const pageH = doc.internal.pageSize.getHeight();
   doc.setFontSize(8);
   doc.setTextColor(150);
@@ -174,8 +168,20 @@ export function exporteerBonNaarPdf({ bonnummer, klant, klantType, regels, totaa
     { align: "center" }
   );
 
-  // === DOWNLOAD ===
-  const bestandsnaam = "Bon-" + bonnummer + "-" + new Date().toISOString().slice(0, 10) + ".pdf";
+  return doc;
+}
+
+export function exporteerBonNaarPdfBase64(opts) {
+  const doc = maakBonPdfDoc(opts);
+  const bestandsnaam = "Bon-" + opts.bonnummer + "-" + new Date().toISOString().slice(0, 10) + ".pdf";
+  const dataUri = doc.output("datauristring");
+  const base64 = dataUri.split(",")[1] || "";
+  return { base64, bestandsnaam };
+}
+
+export function exporteerBonNaarPdf(opts) {
+  const doc = maakBonPdfDoc(opts);
+  const bestandsnaam = "Bon-" + opts.bonnummer + "-" + new Date().toISOString().slice(0, 10) + ".pdf";
   doc.save(bestandsnaam);
   return bestandsnaam;
 }

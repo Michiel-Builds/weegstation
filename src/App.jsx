@@ -9,7 +9,7 @@ import {
 } from "./utils/prijzen";
 import { vastlegOpbrengstVoorDag, zorgVoorDagSnapshot, vandaagDatumKey } from "./utils/opbrengstDag";
 import {
-  laadBonOmzet, BON_OMZET_LS_KEY, berekenTotaleOmzet, berekenOmzetVandaag,
+  laadBonOmzet, BON_OMZET_LS_KEY, berekenTotaleOmzet, berekenOmzetVandaag, berekenTotaalAftrek,
 } from "./utils/bonOmzet";
 import { getInitKlanten, getZakelijk, getParticulier } from "./data/klanten";
 
@@ -20,6 +20,7 @@ import WeegPagina from "./components/WeegPagina";
 import XMLImport from "./components/XMLImport";
 import BonBouwer from "./components/BonBouwer";
 import RapportPagina from "./components/RapportPagina";
+import KlantRapportPagina from "./components/KlantRapportPagina";
 import Calculator from "./components/Calculator";
 import KlantenSidebar from "./components/KlantenSidebar";
 import MultiWindowButtons from "./components/MultiWindowButtons";
@@ -206,6 +207,7 @@ export default function App() {
   const totaalKg = wegingen.reduce((s, w) => s + w.gewicht, 0);
   const totaalOmzet = berekenTotaleOmzet(bonOmzet);
   const omzetVandaag = berekenOmzetVandaag(bonOmzet);
+  const totaalVuilAftrek = berekenTotaalAftrek(bonOmzet);
   const vandaag = wegingen.filter(w => w.datum === new Date().toLocaleDateString("nl-NL"));
   const kanPrijzen = gebruiker && (gebruiker.rol === "Admin" || gebruiker.rol === "Prijzen");
 
@@ -256,6 +258,7 @@ export default function App() {
         ...(kanPrijzen ? [{ key: "prijzen", icon: "euro", label: "Prijzen" }] : []),
         ...(kanPrijzen ? [{ key: "instellingen", icon: "instellingen", label: "Instellingen" }] : []),
         { key: "rapport", icon: "rapport", label: "Rapport" },
+        { key: "klantrapport", icon: "lijst", label: "Klanten" },
         ...(LMA_INGESCHAKELD ? [
           { key: "afvalstromen", icon: "lijst", label: "Afvalstromen (LMA)" },
           { key: "lma", icon: "rapport", label: "LMA / Afvalmelding" },
@@ -272,6 +275,7 @@ export default function App() {
     wegingen: "Wegingen",
     prijzen: "Prijsbeheer",
     rapport: "Rapportage",
+    klantrapport: "Klantenrapport",
     afvalstromen: "Afvalstromen (LMA)",
     lma: "LMA / Afvalmelding",
     import: "XML Import",
@@ -398,6 +402,7 @@ export default function App() {
                   <div className="kpi-card"><div className="kpi-label">Wegingen vandaag</div><div className="kpi-value">{vandaag.length}</div><div className="kpi-sub">vrachten geregistreerd</div></div>
                   <div className="kpi-card"><div className="kpi-label">Totaal gewicht</div><div className="kpi-value">{(totaalKg / 1000).toFixed(1)}<span style={{ fontSize: 16, color: "var(--muted)" }}>t</span></div><div className="kpi-sub">alle wegingen</div></div>
                   <div className="kpi-card"><div className="kpi-label">Totale omzet</div><div className="kpi-value" style={{ fontSize: 22 }}>€ {totaalOmzet.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div><div className="kpi-sub">{bonOmzet.length} bon(nen) opgeslagen · vandaag € {omzetVandaag.toLocaleString("nl-NL", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></div>
+                  <div className="kpi-card"><div className="kpi-label">Totaal vuil aftrek</div><div className="kpi-value">{totaalVuilAftrek.toLocaleString("nl-NL", { maximumFractionDigits: 0 })}<span style={{ fontSize: 16, color: "var(--muted)" }}> kg</span></div><div className="kpi-sub">op alle bonnen</div></div>
                   <div className="kpi-card"><div className="kpi-label">Klanten in DB</div><div className="kpi-value">{klanten.length}</div><div className="kpi-sub">{getZakelijk(klanten).length} zakelijk · {getParticulier(klanten).length} particulier</div></div>
                 </div>
                 <div className="two-col">
@@ -547,12 +552,16 @@ export default function App() {
             {pagina === "rapport" && (
               <RapportPagina wegingen={wegingen} materialen={MATERIALEN} />
             )}
+            {pagina === "klantrapport" && (
+              <KlantRapportPagina bonOmzet={bonOmzet} klanten={klanten} />
+            )}
             {pagina === "bon" && (
               <BonBouwer
                 prijzen={prijzen}
                 wegingen={wegingen}
                 klanten={klanten}
                 bedrijfsnaam={bedrijf?.bedrijfsnaam || PRODUCT_NAAM}
+                bonnenBasismap={bedrijf?.bonnenBasismap || ""}
               />
             )}
             {pagina === "wegen" && (

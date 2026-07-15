@@ -118,14 +118,14 @@ Via environment-variabelen:
 | `WEEGBRUG_COM` | COM1 | COM-poort van de weegbrug |
 | `LOODS_COM` | COM2 | COM-poort van de loods weegschaal |
 | `NEWTON_XML_MAP` | `C:\NewTon\XMLExport\` | Map waar NewTon XML-bestanden zet |
-| `WEEGSERVER_KEY` | `bulters-2024` | API-key voor HTTP-authenticatie |
+| `WEEGSERVER_KEY` | *(geen default)* | API-key voor HTTP-authenticatie |
 
 Voorbeeld in een Windows-batch-bestand:
 ```cmd
 set HTTP_PORT=3000
 set WEEGBRUG_COM=COM3
 set LOODS_COM=COM4
-set WEEGSERVER_KEY=mijn-geheime-key
+set WEEGSERVER_KEY=<VUL_EIGEN_SLEUTEL_IN>
 node server.cjs
 ```
 
@@ -139,7 +139,7 @@ Verwacht JSON met weegbrug, loods, wegingen.
 
 ### Met API-key
 ```cmd
-curl -H "X-API-Key: bulters-2024" http://localhost:3000/status
+curl -H "X-API-Key: %WEEGSERVER_KEY%" http://localhost:3000/status
 ```
 
 ### WebSocket

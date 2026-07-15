@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">WeegStation</string>
+    <string name="title_activity_main">WeegStation</string>
+    <string name="package_name">nl.weegstation.app</string>
+    <string name="custom_url_scheme">nl.weegstation.app</string>
+</resources>

@@ -6,13 +6,17 @@
 // de bestaande synchrone code blijft werken.
 // =============================================
 
-// Sleutels die duurzaam (op schijf) bewaard moeten blijven (5-jaars bewaarplicht).
+// Sleutels die duurzaam (op schijf) bewaard moeten blijven.
 export const DUURZAME_SLEUTELS = [
   "ws-wegingen",
   "ws-afvalstromen",
   "ws-lma-meldingen",
   "ws-begeleidingsbrieven",
   "ws-bon-omzet",
+  "ws-klanten",
+  "ws-open-ritten",
+  "ws-bonnen",
+  "ws-actieve-wegingen",
 ];
 
 function heeftElectronData() {
@@ -56,11 +60,26 @@ export function laadDuurzaam(key, fallback = null) {
   return fallback;
 }
 
-// Exporteer een back-up van alle duurzame data naar een door de gebruiker
-// gekozen bestand (alleen in Electron).
+// Exporteer / importeer back-up (alleen in Electron).
 export async function exporteerBackup() {
   if (!window.electronAPI?.dataExporteer) {
     return { ok: false, fout: "Alleen beschikbaar in de desktop-app" };
   }
   return window.electronAPI.dataExporteer({ keys: DUURZAME_SLEUTELS });
+}
+
+export async function importeerBackup() {
+  if (!window.electronAPI?.dataImporteer) {
+    return { ok: false, fout: "Alleen beschikbaar in de desktop-app" };
+  }
+  return window.electronAPI.dataImporteer({ keys: DUURZAME_SLEUTELS });
+}
+
+export async function haalDataOpslagPad() {
+  if (!window.electronAPI?.dataPad) return null;
+  try {
+    return await window.electronAPI.dataPad();
+  } catch {
+    return null;
+  }
 }

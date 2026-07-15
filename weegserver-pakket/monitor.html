@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="refresh" content="1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>WeegStation Weegbrug Monitor</title>
+  <style>
+    body {
+      font-family: Segoe UI, Tahoma, sans-serif;
+      background: #0f1419;
+      color: #e8edf2;
+      margin: 0;
+      padding: 24px;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 22px; color: #fff; margin: 0 0 6px 0; }
+    .sub { color: #8b9aab; font-size: 14px; margin-bottom: 24px; }
+    .card {
+      background: #1a222d;
+      border: 1px solid #2a3544;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #8b9aab;
+      margin-bottom: 8px;
+    }
+    .gewicht {
+      font-size: 48px;
+      font-weight: bold;
+      line-height: 1.1;
+    }
+    .status { margin-top: 12px; font-size: 16px; }
+    .status-ok { color: #3dd68c; }
+    .status-warn { color: #f5a623; }
+    .status-err { color: #ff5c5c; }
+    .status-wait { color: #5b9cf5; }
+    .info { margin-top: 8px; font-size: 18px; font-weight: bold; }
+    .debug {
+      font-family: Consolas, Courier New, monospace;
+      font-size: 12px;
+      color: #6b7a8d;
+      margin-top: 8px;
+      word-break: break-all;
+    }
+    .footer {
+      text-align: center;
+      color: #4a5568;
+      font-size: 12px;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>WeegStation Weegbrug Monitor</h1>
+    <p class="sub">Lokaal diagnose-scherm — vernieuwt elke seconde</p>
+
+    <div class="card">
+      <div class="label">Weegbrug</div>
+      <div class="gewicht">{{WEGBRUG_GEWICHT}}</div>
+      <div class="status {{WEGBRUG_STATUS_KLASSE}}">{{WEGBRUG_STATUS_TEKST}}</div>
+      <div class="debug">{{WEGBRUG_DEBUG}}</div>
+    </div>
+
+    {{LOODS_BLOK}}
+
+    <div class="card">
+      <div class="label">IP voor kantoor</div>
+      <div class="info">{{IP_POORT}}</div>
+      <div class="label" style="margin-top:16px">Kantoor-apps verbonden</div>
+      <div class="info">{{APPS_VERBONDEN}}</div>
+    </div>
+
+    <p class="footer">Server v3.1.11 · {{TIJD}}</p>
+  </div>
+</body>
+</html>

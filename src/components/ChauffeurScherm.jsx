@@ -5,6 +5,7 @@ export default function ChauffeurScherm({
   gebruiker, onLogout, onWeging,
   gewichtWeegbrug, gewichtLoods, serverVerbonden = false,
   bedrijfsnaam = "WeegStation",
+  mobiel = false,
 }) {
   const [kenteken, setKenteken]         = useState("");
   const [materiaal, setMateriaal]       = useState(null);
@@ -39,7 +40,7 @@ export default function ChauffeurScherm({
   const kanRegistreren = kenteken.trim().length >= 3 && materiaal && stabiel && !bezig && !bevestigd;
 
   return (
-    <div className="weeg-wrap">
+    <div className={`weeg-wrap${mobiel ? " mobile-chauffeur mobile-safe" : ""}`}>
       <div className="weeg-card">
         <div className="weeg-header">
           <div className="weeg-header-left">

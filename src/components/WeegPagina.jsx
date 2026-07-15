@@ -6,7 +6,7 @@ import {
   zorgVoorDagSnapshot, vandaagDatumKey,
   getOpbrengstPrijsVoorDatum, laadOpbrengstDagSnapshots,
 } from "../utils/opbrengstDag";
-import { laadOpenRitten, bewaarOpenRitten } from "../utils/ritten";
+import { laadOpenRitten, bewaarOpenRitten, bewaarActieveWegingen, laadActieveWegingen } from "../utils/ritten";
 import { laadAfvalstromen, vindAfvalstroom } from "../utils/afvalstromen";
 import { bepaalMeldplicht } from "../utils/meldplicht";
 import { voegKlantToe, maakLegeKlant } from "../data/klanten";
@@ -73,6 +73,18 @@ function huidigeStap(rit) {
   return 5;
 }
 
+function ritHeeftData(rit) {
+  return !!(rit?.kenteken?.trim() || rit?.klantNaam?.trim() || rit?.vol || rit?.leeg);
+}
+
+function tabLabel(rit) {
+  if (rit?.kenteken?.trim()) {
+    const klant = rit.klantNaam?.trim();
+    return klant ? `${rit.kenteken} · ${klant}` : rit.kenteken;
+  }
+  return "Nieuwe weging";
+}
+
 export default function WeegPagina({
   gewichtWeegbrug, gewichtLoods,
   serverVerbonden,
@@ -82,7 +94,9 @@ export default function WeegPagina({
   stoplichtEnabled = false,
   onStoplicht,
 }) {
-  const [actieveRit, setActieveRit] = useState(maakLegeRit);
+  const [actieveRitten, setActieveRitten] = useState(() => [maakLegeRit()]);
+  const [actieveTabId, setActieveTabId] = useState(null);
+  const [sessieGeladen, setSessieGeladen] = useState(false);
   const [openRitten, setOpenRitten] = useState(() => laadOpenRitten());
   const [actieveBron, setActieveBron] = useState("weegbrug");
   const [toast, setToast] = useState(null);
@@ -91,6 +105,7 @@ export default function WeegPagina({
   const [brieven, setBrieven] = useState(() => LMA_INGESCHAKELD ? laadBegeleidingsbrieven() : []);
   const [klantForm, setKlantForm] = useState(null);
 
+  const actieveRit = actieveRitten.find(r => r.id === actieveTabId) || actieveRitten[0];
   const serverGewicht = actieveBron === "weegbrug" ? gewichtWeegbrug : gewichtLoods;
   const huidigGewicht = serverGewicht;
   const gewichtOk = huidigGewicht !== null && huidigGewicht !== undefined && huidigGewicht > 0;
@@ -117,15 +132,38 @@ export default function WeegPagina({
   const kanGroenLicht = !!(actieveRit.vol || actieveRit.leeg);
 
   useEffect(() => {
+    const saved = laadActieveWegingen();
+    const rit = maakLegeRit();
+    if (saved?.tabs?.length > 0 && saved.tabs.some(ritHeeftData)) {
+      if (confirm("Onafgemaakte weging(en) hervatten?")) {
+        setActieveRitten(saved.tabs);
+        setActieveTabId(saved.actieveTabId || saved.tabs[0].id);
+      } else {
+        setActieveRitten([rit]);
+        setActieveTabId(rit.id);
+      }
+    } else {
+      setActieveRitten([rit]);
+      setActieveTabId(rit.id);
+    }
+    setSessieGeladen(true);
+  }, []);
+
+  useEffect(() => {
     bewaarOpenRitten(openRitten);
   }, [openRitten]);
+
+  useEffect(() => {
+    if (!sessieGeladen || !actieveTabId) return;
+    bewaarActieveWegingen({ tabs: actieveRitten, actieveTabId });
+  }, [actieveRitten, actieveTabId, sessieGeladen]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       if (typeof window !== "undefined" && window.__wsGeselecteerdeKlant) {
         const k = window.__wsGeselecteerdeKlant;
         window.__wsGeselecteerdeKlant = null;
-        setActieveRit(prev => ({
+        updateActieveRit(prev => ({
           ...prev,
           klantNaam: k.naam,
           klantId: k.id ?? null,
@@ -138,7 +176,15 @@ export default function WeegPagina({
       }
     }, 200);
     return () => clearInterval(interval);
-  }, []);
+  }, [actieveTabId]);
+
+  function updateActieveRit(updater) {
+    setActieveRitten(prev => prev.map(r =>
+      r.id === actieveTabId
+        ? (typeof updater === "function" ? updater(r) : { ...r, ...updater })
+        : r
+    ));
+  }
 
   function toonToast(msg) {
     setToast(msg);
@@ -146,11 +192,41 @@ export default function WeegPagina({
   }
 
   function updateRit(veld, waarde) {
-    setActieveRit(prev => ({ ...prev, [veld]: waarde }));
+    updateActieveRit(prev => ({ ...prev, [veld]: waarde }));
+  }
+
+  function nieuweWegingTab() {
+    const rit = maakLegeRit();
+    setActieveRitten(prev => [...prev, rit]);
+    setActieveTabId(rit.id);
+    toonToast("✓ Nieuwe weging-tab");
+  }
+
+  function sluitTab(id) {
+    const tab = actieveRitten.find(r => r.id === id);
+    if (actieveRitten.length <= 1) {
+      if (ritHeeftData(tab) && !confirm("Huidige weging wissen?")) return;
+      const nieuw = maakLegeRit();
+      setActieveRitten([nieuw]);
+      setActieveTabId(nieuw.id);
+      return;
+    }
+    if (ritHeeftData(tab) && !confirm("Tab sluiten? Niet-opgeslagen gegevens gaan verloren.")) return;
+    const idx = actieveRitten.findIndex(r => r.id === id);
+    const volgende = actieveRitten[idx + 1] || actieveRitten[idx - 1];
+    setActieveRitten(prev => prev.filter(r => r.id !== id));
+    if (id === actieveTabId) setActieveTabId(volgende.id);
+  }
+
+  function vervangActieveTabMetLeeg() {
+    const nieuw = maakLegeRit();
+    setActieveRitten(prev => prev.map(r => r.id === actieveTabId ? nieuw : r));
+    setActieveTabId(nieuw.id);
+    return nieuw;
   }
 
   function kiesKlant(kl) {
-    setActieveRit(prev => ({
+    updateActieveRit(prev => ({
       ...prev,
       klantNaam: kl.naam,
       klantId: kl.id ?? null,
@@ -182,14 +258,11 @@ export default function WeegPagina({
       return;
     }
     const tijd = new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
-    setActieveRit(prev => {
-      const next = {
-        ...prev,
-        [type]: String(huidigGewicht),
-        [type + "Tijd"]: tijd,
-      };
-      return next;
-    });
+    updateActieveRit(prev => ({
+      ...prev,
+      [type]: String(huidigGewicht),
+      [type + "Tijd"]: tijd,
+    }));
     toonToast(`✓ ${type === "vol" ? "Vol" : "Leeg"} vastgelegd: ${fmtI(huidigGewicht)} kg`);
   }
 
@@ -207,7 +280,7 @@ export default function WeegPagina({
       const zonder = prev.filter(r => r.id !== teParkeren.id);
       return [teParkeren, ...zonder];
     });
-    setActieveRit(maakLegeRit());
+    vervangActieveTabMetLeeg();
     toonToast(`⏸ ${teParkeren.kenteken} geparkeerd — wacht op leeg`);
   }
 
@@ -226,7 +299,7 @@ export default function WeegPagina({
       if (!confirm("Huidige rit wissen en deze hervatten?")) return;
     }
     setOpenRitten(prev => prev.filter(r => r.id !== rit.id));
-    setActieveRit({ ...rit, id: rit.id || "rit-" + Date.now() });
+    updateActieveRit(() => ({ ...rit, id: rit.id || actieveTabId }));
     if (rit.bron) setActieveBron(rit.bron);
     toonToast(`↩ Rit hervat: ${rit.kenteken}`);
   }
@@ -241,7 +314,7 @@ export default function WeegPagina({
     if (actieveRit.vol || actieveRit.klantNaam || actieveRit.kenteken) {
       if (!confirm("Huidige rit wissen?")) return;
     }
-    setActieveRit(maakLegeRit());
+    vervangActieveTabMetLeeg();
     toonToast("Rit gewist");
   }
 
@@ -333,7 +406,7 @@ export default function WeegPagina({
     }
 
     setOpenRitten(prev => prev.filter(x => x.id !== r.id));
-    setActieveRit(maakLegeRit());
+    vervangActieveTabMetLeeg();
     setOpgeslagenFlash(true);
     setTimeout(() => setOpgeslagenFlash(false), 2000);
     toonToast(`✓ ${r.kenteken} · ${mat?.naam} · ${fmtI(nettoKg)} kg netto opgeslagen`);
@@ -376,9 +449,59 @@ body { font-family: "Segoe UI", sans-serif; margin: 0; color: #000; font-size: 1
     w.document.close();
   }
 
+  if (!sessieGeladen || !actieveRit) return null;
+
   return (
     <div className={`scale-house${opgeslagenFlash ? " sh-opgeslagen" : ""}`}>
       <div className="sh-main">
+        <div style={{
+          display: "flex", gap: 4, marginBottom: 8, padding: "0 0 4px 0",
+          overflowX: "auto", borderBottom: "1px solid var(--border)",
+        }}>
+          {actieveRitten.map(rit => {
+            const isActief = rit.id === actieveTabId;
+            return (
+              <div
+                key={rit.id}
+                onClick={() => setActieveTabId(rit.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6,
+                  padding: "6px 12px",
+                  background: isActief ? "var(--surface)" : "var(--surface2)",
+                  color: isActief ? "var(--text)" : "var(--muted)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "6px 6px 0 0",
+                  cursor: "pointer",
+                  fontFamily: "var(--mono)", fontSize: 11, fontWeight: 600,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span>🚛 {tabLabel(rit)}</span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); sluitTab(rit.id); }}
+                  style={{
+                    background: "none", border: "none", color: "var(--muted)",
+                    cursor: "pointer", fontSize: 14, padding: 0, lineHeight: 1,
+                  }}
+                  title="Tab sluiten"
+                >×</button>
+              </div>
+            );
+          })}
+          <button
+            type="button"
+            onClick={nieuweWegingTab}
+            style={{
+              padding: "6px 12px", background: "transparent",
+              color: "var(--accent2)", border: "1px dashed var(--border)",
+              borderRadius: "6px 6px 0 0", cursor: "pointer",
+              fontFamily: "var(--mono)", fontSize: 11, fontWeight: 700,
+              whiteSpace: "nowrap",
+            }}
+          >+ Nieuwe weging</button>
+        </div>
+
         <div className="sh-stappen">
           {STAPPEN.map(s => (
             <div key={s.nr} className={`sh-stap${stap === s.nr ? " actief" : ""}${stap > s.nr ? " klaar" : ""}`}>
@@ -407,7 +530,7 @@ body { font-family: "Segoe UI", sans-serif; margin: 0; color: #000; font-size: 1
                 <KlantAutocomplete
                   klanten={klanten}
                   value={actieveRit.klantNaam}
-                  onChange={v => setActieveRit(prev => ({
+                  onChange={v => updateActieveRit(prev => ({
                     ...prev, klantNaam: v, klantId: null, klantType: "", afvalstroomId: null,
                     vervoerderNaam: v, vihb: "",
                   }))}
@@ -441,6 +564,11 @@ body { font-family: "Segoe UI", sans-serif; margin: 0; color: #000; font-size: 1
         <div className={`sh-live${gewichtOk ? " stabiel" : ""}`}>
           <div className="sh-live-bron">
             {actieveBron === "weegbrug" ? "🚛 Weegbrug" : "⚖ Loods"} · {serverVerbonden ? "● LIVE" : "○ Offline"}
+            {actieveRit?.kenteken?.trim() && (
+              <span style={{ marginLeft: 8, color: "var(--accent2)" }}>
+                → vastleggen voor: {actieveRit.kenteken}
+              </span>
+            )}
           </div>
           <div className="sh-live-getal">
             {huidigGewicht !== null && huidigGewicht !== undefined ? fmtI(huidigGewicht) : "—"}
@@ -672,6 +800,7 @@ body { font-family: "Segoe UI", sans-serif; margin: 0; color: #000; font-size: 1
         <div className="sh-stats">
           <div><span className="sh-stat-lbl">Vandaag</span><span className="sh-stat-val">{wegingen.length} wegingen</span></div>
           <div><span className="sh-stat-lbl">Open</span><span className="sh-stat-val">{openRitten.length}</span></div>
+          <div><span className="sh-stat-lbl">Tabs</span><span className="sh-stat-val">{actieveRitten.length}</span></div>
         </div>
       </aside>
 
